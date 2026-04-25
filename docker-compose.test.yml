@@ -27,7 +27,8 @@ services:
     profiles: ["opensearch"]
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=LocalStage1BAdmin!123
       - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
       - bootstrap.memory_lock=false
     ports:

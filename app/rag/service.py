@@ -7,6 +7,7 @@ layer only deals with HTTP concerns.
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,7 +19,7 @@ from .generation import detect_prompt_injection
 from .graph import GraphDeps, RagState, run_graph
 from .ingestion import ingest_corpus
 from .models import Chunk, UserContext
-from .retrieval import InMemoryOpenSearchBackend, RetrievalBackend
+from .retrieval import DEFAULT_INDEX_NAME, InMemoryOpenSearchBackend, OpenSearchBackend, RetrievalBackend
 from .security import audit, build_auth_filter
 
 
@@ -184,10 +185,21 @@ def build_service_from_paths(
     manifest_path: Path,
     users_path: Path | None = None,
     enable_cache: bool = False,
+    retrieval_backend: str | None = None,
 ) -> tuple[RagService, dict[str, UserContext]]:
     chunks = ingest_corpus(manifest_path)
     embedder = EmbeddingModel()
-    backend = InMemoryOpenSearchBackend(chunks, embedder=embedder)
+    backend_name = (retrieval_backend or os.getenv("RETRIEVAL_BACKEND", "memory")).lower()
+    if backend_name == "opensearch":
+        backend = OpenSearchBackend(
+            chunks,
+            embedder=embedder,
+            url=os.getenv("OPENSEARCH_URL") or None,
+            index_name=os.getenv("OPENSEARCH_INDEX", DEFAULT_INDEX_NAME),
+            recreate_index=os.getenv("OPENSEARCH_RECREATE_INDEX", "true").lower() == "true",
+        )
+    else:
+        backend = InMemoryOpenSearchBackend(chunks, embedder=embedder)
     cache = SemanticCache(embedder=embedder, enabled=enable_cache)
     service = RagService(
         chunks=chunks,

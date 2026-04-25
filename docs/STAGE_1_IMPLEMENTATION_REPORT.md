@@ -9,6 +9,12 @@ semantic cache, and audit logging) that runs **entirely offline** against the
 synthetic corpus and sample requests in this repository. No AWS APIs are
 invoked, no infrastructure is deployed, and no secrets are created.
 
+Stage 1B is now complete: the retrieval adapter has both the deterministic
+in-memory backend and a real local Docker OpenSearch backend selected by
+`RETRIEVAL_BACKEND=opensearch`. The live OpenSearch smoke tests validate index
+creation, bulk indexing, RBAC-filtered lexical/vector retrieval, hybrid RRF,
+and citation-complete final context against `opensearchproject/opensearch:2.17.1`.
+
 All core assessment constraints — zero-hallucination tolerance via exact
 citations, RBAC-before-retrieval, helpdesk FIOD denial, bounded
 correction/abstention, citation membership in the authorized context set —
@@ -19,9 +25,9 @@ cache isolation), RAG evaluation, and a performance smoke check.
 
 The retrieval layer is implemented behind a single adapter with two
 backends: an **OpenSearch-compatible in-memory fake** (used by default on a
-laptop) and the **mapping/query contract** that can drive a real OpenSearch
-cluster. Both backends share one authorization filter, so application-level
-tests are backend-agnostic.
+laptop) and a **real OpenSearch backend** for Docker-based compatibility tests.
+Both backends share one authorization filter, so application-level tests are
+backend-agnostic.
 
 ## 2. Goal Checklist
 
@@ -29,7 +35,7 @@ tests are backend-agnostic.
 | --- | --- | --- | --- |
 | Legal-aware ingestion (legislation + case law + policy + e-learning) | Met | [`app/rag/ingestion.py`](../app/rag/ingestion.py), [`tests/unit/test_ingestion_chunking.py`](../tests/unit/test_ingestion_chunking.py) | Chapter/Section/Article/Paragraph for legislation; ECLI + Facts/Legal Question/Reasoning/Holding for case law. |
 | Front-matter metadata + lineage | Met | [`app/rag/models.py`](../app/rag/models.py), `test_every_chunk_has_citation_critical_metadata`, `test_restricted_fiod_metadata_preserved` | Stable `chunk_id`, classification, allowed_roles, effective_from/to, version, case_scope preserved. |
-| OpenSearch-compatible retrieval adapter | Met | [`app/rag/retrieval.py`](../app/rag/retrieval.py) (`build_index_mapping`, `build_opensearch_queries`), `tests/integration/test_retrieval_queries.py` | Exact mapping/query payloads asserted against `tests/integration/opensearch_index_config_expected.json`. |
+| OpenSearch-compatible retrieval adapter | Met | [`app/rag/retrieval.py`](../app/rag/retrieval.py) (`build_index_mapping`, `build_opensearch_queries`, `OpenSearchBackend`), `tests/integration/test_retrieval_queries.py`, `tests/integration/test_opensearch_backend_optional.py` | Exact mapping/query payloads asserted in offline tests; live Docker OpenSearch smoke tests pass when enabled. |
 | BM25 + vector + RRF + rerank + final top-N | Met | `InMemoryOpenSearchBackend`, `reciprocal_rank_fusion`, `rerank`, `take_with_complete_citations`; [`tests/unit/test_rrf_and_rerank.py`](../tests/unit/test_rrf_and_rerank.py) | Field boosts `ecli^12 / document_id^8 / article^5 / text^2`; reranker cap 60; final context ≤ 8. |
 | Exact identifier retrieval (ECLI) | Met | `test_exact_ecli_retrieves_case_law_for_inspector`, `test_ask_inspector_ecli_returns_case_law` | ECLI query surfaces DOC-CASE-001 for inspector/legal; never surfaces FIOD. |
 | RBAC-before-retrieval | Met | [`app/rag/security.py`](../app/rag/security.py), `tests/security/test_rbac_and_injection.py` | `InMemoryOpenSearchBackend.lexical_search` / `vector_search` filter before scoring; leakage guard in `hybrid_retrieve`. |
@@ -43,7 +49,7 @@ tests are backend-agnostic.
 | Audit logging | Met | `app.rag.security.audit` called from `app.rag.service.RagService.ask` | JSON records for `cache_hit` and `rag_answer` with user, filters, retrieved chunk ids, citation ids, abstention reason, injection flag. |
 | FastAPI `/health` and `/ask` | Met | [`app/main.py`](../app/main.py), [`tests/integration/test_api_endpoints.py`](../tests/integration/test_api_endpoints.py) | `/ask` loads user context from `sample_requests/users.json`, returns answer, citations, retrieved_chunk_ids, grader label, cache-hit flag, trace, latency. |
 | Deterministic pytest suite (no live LLM) | Met | 75 tests pass in ~0.8s | Runs without AWS, without OpenSearch container, fully offline. |
-| Local OpenSearch compatibility validation | Partial | Mapping + query contract asserted against expected fixture; live container not required to pass tests | Docker Compose profile `opensearch` is ready; live end-to-end validation against a running OpenSearch cluster is deferred to Stage 1B on a larger machine. |
+| Local OpenSearch compatibility validation | Met | `OpenSearchBackend`, `docker-compose.test.yml`, `tests/integration/test_opensearch_backend_optional.py` | Optional live tests passed against Docker OpenSearch 2.17.1; default suite still skips live tests unless `OPENSEARCH_INTEGRATION=true`. |
 
 ## 3. Distance From Targets
 
@@ -53,9 +59,9 @@ tests are backend-agnostic.
 | Citation completeness | 100 % | 100 % on the non-abstention path | 0 | Composer rejects incomplete citations; validation stage abstains if any cited chunk is outside the retrieved set. |
 | Citation accuracy (chunk id ∈ authorized retrieved) | 100 % | 100 % | 0 | Guaranteed by construction — cites are built from the same chunk objects that reached generation. |
 | Abstention correctness (FIOD denial + version conflict) | Abstain | Abstains with reason `retry_budget_exhausted` or `prompt_injection_detected` | none on the tested set | Reasons are surfaced for audit. |
-| TTFT p95 (local in-memory, smoke) | < 1.5 s | p95 < 0.05 s | ~30× under budget | Production path replaces the fake with OpenSearch + Bedrock; the target is re-validated in Stage 1B/Stage 2. |
+| TTFT p95 (local in-memory, smoke) | < 1.5 s | p95 < 0.05 s | ~30× under budget | Production path still needs Bedrock validation; Stage 1B validates local OpenSearch compatibility. |
 | OOM events | 0 | 0 | 0 | Corpus is tiny; the architectural controls that matter at 20M chunks (bounded top-k, ef_search cap, rerank cap, final-context cap) are enforced and tested. |
-| Test pass count | all | **75 / 75 passing** | 0 | `pytest -v` output included in Section 6 below. |
+| Test pass count | all | **75 / 75 passing offline; 3 / 3 live OpenSearch optional tests passing** | 0 | Default pytest suite remains offline-safe; live OpenSearch tests are opt-in. |
 
 ## 4. What Was Built
 
@@ -70,7 +76,7 @@ tests are backend-agnostic.
 | [`app/rag/ingestion.py`](../app/rag/ingestion.py) | Front-matter parser, legal-aware chunkers for `legislation`, `case_law`, `internal_policy`, `elearning`; `ingest_corpus()` driver. |
 | [`app/rag/embeddings.py`](../app/rag/embeddings.py) | Deterministic hash-based embedding model (stand-in for Cohere Embed v4). |
 | [`app/rag/security.py`](../app/rag/security.py) | `AuthFilter` (produces the exact OpenSearch `bool` query fragment + stable scope hash), `is_authorized`, `authorized_only`, `audit`. |
-| [`app/rag/retrieval.py`](../app/rag/retrieval.py) | `build_index_mapping`, `build_opensearch_queries`, `RetrievalBackend` protocol, `InMemoryOpenSearchBackend`, `reciprocal_rank_fusion`, `rerank`, `take_with_complete_citations`, `hybrid_retrieve`. |
+| [`app/rag/retrieval.py`](../app/rag/retrieval.py) | `build_index_mapping`, `build_opensearch_queries`, `RetrievalBackend` protocol, `InMemoryOpenSearchBackend`, real `OpenSearchBackend`, `reciprocal_rank_fusion`, `rerank`, `take_with_complete_citations`, `hybrid_retrieve`. |
 | [`app/rag/generation.py`](../app/rag/generation.py) | Deterministic extractive answer composer with prompt-injection detection and citation completeness checks. |
 | [`app/rag/graph.py`](../app/rag/graph.py) | CRAG state machine: `run_graph`, grader, rewrite, HyDE, decomposition, bounded retries. |
 | [`app/rag/cache.py`](../app/rag/cache.py) | Authorization-scoped semantic cache with cosine similarity threshold and citation-aware keys. |
@@ -85,6 +91,7 @@ tests are backend-agnostic.
 | [`tests/unit/test_rrf_and_rerank.py`](../tests/unit/test_rrf_and_rerank.py) | RRF stability, rerank cap, historical-version de-duplication. |
 | [`tests/unit/test_crag_state_transitions.py`](../tests/unit/test_crag_state_transitions.py) | CRAG transitions, limits, abstention paths. |
 | [`tests/integration/test_retrieval_queries.py`](../tests/integration/test_retrieval_queries.py) | OpenSearch mapping + query contract, authorized retrieval, bounded top-k, fixture-driven query expectations. |
+| [`tests/integration/test_opensearch_backend_optional.py`](../tests/integration/test_opensearch_backend_optional.py) | Optional live Docker OpenSearch validation for exact ECLI retrieval, RBAC-before-retrieval, vector search, hybrid retrieval, and citation-complete final context. |
 | [`tests/integration/test_api_endpoints.py`](../tests/integration/test_api_endpoints.py) | FastAPI `/health` and `/ask` (including unknown-user 404 and injection abstention). |
 | [`tests/security/test_rbac_and_injection.py`](../tests/security/test_rbac_and_injection.py) | RBAC leakage, FIOD case_scope, prompt injection, `rbac_llm_scenarios.json` S2 and S6. |
 | [`tests/security/test_semantic_cache_isolation.py`](../tests/security/test_semantic_cache_isolation.py) | Authorization-scoped cache, no cross-role reuse, no caching of abstentions. |
@@ -95,8 +102,8 @@ tests are backend-agnostic.
 
 | File | Change |
 | --- | --- |
-| [`requirements.txt`](../requirements.txt) | Added `httpx` (FastAPI TestClient transport). |
-| [`docker-compose.test.yml`](../docker-compose.test.yml) | Redis always-on; `opensearch` moved behind an opt-in Compose profile so laptops without 2 GB headroom can still run `up`; app volume-mounted for reload. |
+| [`requirements.txt`](../requirements.txt) | Added `httpx` (FastAPI TestClient transport) and `opensearch-py` for the real Stage 1B backend. |
+| [`docker-compose.test.yml`](../docker-compose.test.yml) | Redis always-on; `opensearch` behind an opt-in Compose profile; local security plugin disabled for deterministic unauthenticated tests; app volume-mounted for reload. |
 | [`Dockerfile`](../Dockerfile) | New minimal image (python:3.12-slim + app + sample data). |
 | [`.env`](../.env) / [`.env.example`](../.env.example) | `RETRIEVAL_BACKEND=memory` knob added. All previous settings left intact. |
 
@@ -139,8 +146,9 @@ docker compose -f docker-compose.test.yml --profile opensearch up --build
 ```
 
 The API today uses `InMemoryOpenSearchBackend` regardless of whether the
-OpenSearch container is running; switching to the real container is a wiring
-change behind the adapter (see Section 10).
+OpenSearch container is running unless `RETRIEVAL_BACKEND=opensearch` is set.
+The Stage 1B tests instantiate the real backend directly and recreate a test
+index for deterministic validation.
 
 ## 6. How to Run Tests
 
@@ -157,19 +165,22 @@ python -m pytest tests/integration
 python -m pytest tests/security
 python -m pytest tests/eval
 python -m pytest tests/perf
+
+# Optional live Docker OpenSearch Stage 1B validation on Windows/cmd syntax
+docker compose -f docker-compose.test.yml --profile opensearch up -d opensearch
+set OPENSEARCH_INTEGRATION=true&& python -m pytest tests/integration/test_opensearch_backend_optional.py -q
 ```
 
 Current run:
 
 ```text
-75 passed in ~0.8s
+75 passed, 3 skipped in 0.97s
+3 passed in 2.44s  # optional live OpenSearch tests with OPENSEARCH_INTEGRATION=true
 ```
 
-Tests never require AWS, never require a running OpenSearch container, and
-never call a live LLM. They use a deterministic embedding model and an
-extractive answer composer whose outputs are structurally equivalent to what
-a Bedrock-backed generator would produce under the same zero-hallucination
-constraints.
+The default test suite never requires AWS, never requires a running OpenSearch
+container, and never calls a live LLM. The optional Stage 1B integration tests
+require only local Docker OpenSearch and still avoid AWS/LLM calls.
 
 ## 7. Where to Change Settings
 
@@ -188,13 +199,13 @@ constraints.
 | Component | What is real | What is mocked / local only | Replacement path |
 | --- | --- | --- | --- |
 | Embedding model | OpenSearch-compatible vector contract; cosine similarity | 128-d deterministic hash-based embeddings (`EmbeddingModel`) | Swap `EmbeddingModel.embed` for a Bedrock `cohere.embed-v4` / `titan-embed-text-v2` client. |
-| Retrieval backend | `AuthFilter` → exact OpenSearch `bool` query body; full index mapping; identical field boosts | In-memory BM25 + cosine backend | Implement `RetrievalBackend.lexical_search` / `vector_search` against `opensearch-py` using `build_opensearch_queries`. |
+| Retrieval backend | `AuthFilter` → exact OpenSearch `bool` query body; full index mapping; identical field boosts; real `opensearch-py` backend validated locally | In-memory BM25 + cosine backend remains the default for fast laptop tests | Use `RETRIEVAL_BACKEND=opensearch` with the Docker Compose OpenSearch profile for real local retrieval. |
 | Reranker | Deterministic combination of RRF + identifier bonus + embedding similarity, capped at 60 | Not a real cross-encoder | Replace `rerank` with a Cohere Rerank 3.5 / cross-encoder call; the function signature is preserved. |
 | LLM generation | Extractive composer that emits verbatim chunk quotes with exact citations | No Claude Haiku/Sonnet invocation | Replace `compose_answer` with a guarded Bedrock call whose prompt includes only authorized chunks and whose output goes through the same `validate_citations` stage. |
 | Semantic cache | Authorization-scoped key; cosine-threshold lookup | In-memory list (not Redis) | Swap `SemanticCache` internals for `redis-py` with the same `lookup`/`write` API. |
 | Audit logging | Structured JSON records via stdlib logging | Writes to the root logger | Point the `tax_rag.audit` logger at CloudWatch / OTel. |
 | S3 raw corpus | Manifest-driven loader that reads markdown from disk | No S3 reads | Replace `load_manifest` and `parse_document` paths with an S3 client that streams from the raw bucket. |
-| OpenSearch container | Docker Compose profile ready | Not wired into the app by default | Add an `OpenSearchBackend` class alongside `InMemoryOpenSearchBackend` and select via `RETRIEVAL_BACKEND`. |
+| OpenSearch container | Docker Compose profile ready and tested with `OpenSearchBackend` | Not used by default to keep normal tests lightweight | Enable with `RETRIEVAL_BACKEND=opensearch` or run `tests/integration/test_opensearch_backend_optional.py` with `OPENSEARCH_INTEGRATION=true`. |
 
 ## 9. Known Limitations
 
@@ -206,10 +217,9 @@ constraints.
 - The reranker is deterministic but *not* a cross-encoder; numerical
   recall/precision ranking quality numbers are not meaningful until Cohere
   Rerank is plugged in.
-- The OpenSearch backend is not exercised end-to-end against a running
-  container in CI. The mapping/query contract tests guarantee that when the
-  backend is switched, the API does not have to change — but a real cluster
-  smoke test is still outstanding.
+- The OpenSearch backend is exercised end-to-end locally via optional tests,
+  but is not enabled in the default suite or CI because it requires Docker,
+  a large image pull, and roughly 2 GB RAM headroom.
 - Prompt-injection detection uses a small phrase list; it will not catch
   paraphrased or multilingual injections. Production needs a lexical +
   classifier + guardrail layer and a larger marker set.
@@ -225,24 +235,20 @@ constraints.
 
 ## 10. Recommended Next Steps
 
-1. **Stage 1B – real OpenSearch backend.** Add `OpenSearchBackend` next to
-   `InMemoryOpenSearchBackend`, select via `RETRIEVAL_BACKEND=opensearch`, and
-   run the existing integration tests against the Docker Compose `opensearch`
-   profile. No application code changes required.
-2. **Stage 2 – Bedrock compatibility checks.** Using
+1. **Stage 2 – Bedrock compatibility checks.** Using
    [`docs/AWS_CLI_ACCESS.md`](AWS_CLI_ACCESS.md), verify model access for the
    five IDs in `.env.example`. Replace `EmbeddingModel` and `compose_answer`
    with Bedrock clients; keep the `validate_citations` stage unchanged.
-3. **Real reranker.** Wire Cohere Rerank 3.5 into `rerank` and re-run the
+2. **Real reranker.** Wire Cohere Rerank 3.5 into `rerank` and re-run the
    integration suite; the 60-candidate cap is already enforced.
-4. **DeepEval run.** Execute the evaluation scenarios in
+3. **DeepEval run.** Execute the evaluation scenarios in
    `tests/eval/zero_hallucination_scenarios.json` against the Bedrock-backed
    generator; enforce the release gate thresholds in
    `tests/eval/ci_eval_gates.json`.
-5. **Load / OOM validation.** Index a 1 M – 5 M synthetic chunk fanout into
+4. **Load / OOM validation.** Index a 1 M – 5 M synthetic chunk fanout into
    the OpenSearch container, tune shard count + `ef_search`, and re-run
    `tests/perf/full_perf.json` scenarios.
-6. **Stronger injection defence.** Replace `detect_prompt_injection` with a
+5. **Stronger injection defence.** Replace `detect_prompt_injection` with a
    classifier + role-aware guardrail before production traffic.
 
 Stage 1 is ready for review and for writing the final assessment; it is **not**
