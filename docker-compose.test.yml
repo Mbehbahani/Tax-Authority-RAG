@@ -6,17 +6,25 @@ services:
       - "8000:8000"
     env_file:
       - .env.example
+    volumes:
+      - ./app:/app/app
+      - ./sample_corpus:/app/sample_corpus
+      - ./sample_requests:/app/sample_requests
     depends_on:
       - redis
-      - opensearch
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
 
+  # Optional OpenSearch profile. Start with:
+  #   docker compose -f docker-compose.test.yml --profile opensearch up
+  # If the laptop cannot spare ~2GB RAM for OpenSearch, leave this profile off
+  # and the API will keep using the in-memory OpenSearch-compatible fake.
   opensearch:
     image: opensearchproject/opensearch:2.17.1
+    profiles: ["opensearch"]
     environment:
       - discovery.type=single-node
       - plugins.security.disabled=true
@@ -30,4 +38,3 @@ services:
 
 volumes:
   opensearch-data:
-
