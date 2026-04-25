@@ -19,19 +19,33 @@ from .models import Chunk, Citation
 from .retrieval import FusionResult
 
 
+def resolve_runtime_model_id(model_id: str) -> str:
+    """Map catalog/base IDs to invocation-ready EU inference profiles when needed."""
+
+    runtime_overrides = {
+        "cohere.embed-v4:0": "eu.cohere.embed-v4:0",
+        "anthropic.claude-3-haiku-20240307-v1:0": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "anthropic.claude-3-7-sonnet-20250219-v1:0": "eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    }
+    return runtime_overrides.get(model_id, model_id)
+
+
 DEFAULT_BEDROCK_REGION = os.getenv("BEDROCK_REGION") or os.getenv("AWS_REGION", "eu-central-1")
-DEFAULT_EMBED_MODEL_ID = os.getenv("BEDROCK_EMBEDDING_MODEL_ID", "eu.cohere.embed-v4:0")
+DEFAULT_EMBED_MODEL_ID = resolve_runtime_model_id(os.getenv("BEDROCK_EMBEDDING_MODEL_ID", "eu.cohere.embed-v4:0"))
 DEFAULT_FALLBACK_EMBED_MODEL_ID = os.getenv(
     "BEDROCK_FALLBACK_EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0"
 )
-DEFAULT_GENERATION_MODEL_ID = os.getenv(
-    "BEDROCK_GENERATION_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+DEFAULT_GENERATION_MODEL_ID = resolve_runtime_model_id(
+    os.getenv("BEDROCK_GENERATION_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
 )
-DEFAULT_FAST_MODEL_ID = os.getenv("BEDROCK_FAST_MODEL_ID", "eu.anthropic.claude-haiku-4-5-20251001-v1:0")
-DEFAULT_JUDGE_MODEL_ID = os.getenv(
-    "BEDROCK_JUDGE_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0"
+DEFAULT_FAST_MODEL_ID = resolve_runtime_model_id(
+    os.getenv("BEDROCK_FAST_MODEL_ID", "eu.anthropic.claude-haiku-4-5-20251001-v1:0")
+)
+DEFAULT_JUDGE_MODEL_ID = resolve_runtime_model_id(
+    os.getenv("BEDROCK_JUDGE_MODEL_ID", "eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
 )
 DEFAULT_RERANK_MODEL_ID = os.getenv("BEDROCK_RERANK_MODEL_ID", "cohere.rerank-v3-5:0")
+DEFAULT_RERANK_INFERENCE_PROFILE_ID = os.getenv("BEDROCK_RERANK_INFERENCE_PROFILE_ID", "")
 EXPECTED_STAGE2_MODEL_IDS = (
     DEFAULT_EMBED_MODEL_ID,
     DEFAULT_FALLBACK_EMBED_MODEL_ID,
@@ -63,9 +77,17 @@ def make_bedrock_runtime_client(*, region_name: str = DEFAULT_BEDROCK_REGION):
 
     try:
         import boto3
+        from botocore.exceptions import ProfileNotFound
     except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("boto3 is required for live Bedrock runtime checks") from exc
-    return boto3.client("bedrock-runtime", region_name=region_name)
+    try:
+        return boto3.client("bedrock-runtime", region_name=region_name)
+    except ProfileNotFound:
+        # Some local .env files may define a documentation-only AWS_PROFILE that
+        # is not configured on the machine. Fall back to the default AWS CLI
+        # credential chain, which is the path validated by aws sts checks.
+        os.environ.pop("AWS_PROFILE", None)
+        return boto3.client("bedrock-runtime", region_name=region_name)
 
 
 def make_bedrock_catalog_client(*, region_name: str = DEFAULT_BEDROCK_REGION):
@@ -73,9 +95,14 @@ def make_bedrock_catalog_client(*, region_name: str = DEFAULT_BEDROCK_REGION):
 
     try:
         import boto3
+        from botocore.exceptions import ProfileNotFound
     except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("boto3 is required for live Bedrock catalog checks") from exc
-    return boto3.client("bedrock", region_name=region_name)
+    try:
+        return boto3.client("bedrock", region_name=region_name)
+    except ProfileNotFound:
+        os.environ.pop("AWS_PROFILE", None)
+        return boto3.client("bedrock", region_name=region_name)
 
 
 def check_model_catalog_availability(
@@ -123,8 +150,8 @@ class BedrockEmbeddingModel:
         dimension: int = 1024,
     ) -> None:
         self._client = client or make_bedrock_runtime_client(region_name=region_name)
-        self.name = model_id
-        self.model_id = model_id
+        self.name = resolve_runtime_model_id(model_id)
+        self.model_id = resolve_runtime_model_id(model_id)
         self.input_type = input_type
         self.dimension = dimension
 
@@ -192,9 +219,9 @@ class BedrockReranker:
             return []
         documents = [_document_text(row.chunk) for row in candidates]
         body: dict[str, Any] = {
+            "api_version": 2,
             "query": query,
             "documents": documents,
-            "return_documents": False,
         }
         if self.top_n is not None:
             body["top_n"] = self.top_n
@@ -212,6 +239,29 @@ class BedrockReranker:
             if idx not in seen:
                 ordered.append(row)
         return ordered
+
+    def probe(self) -> bool:
+        sample = FusionResult(
+            Chunk(
+                chunk_id="probe",
+                document_id="DOC-PROBE",
+                document_name="Probe",
+                source_type="probe",
+                text="home office deduction probe document",
+                article="probe",
+                paragraph="1",
+            ),
+            rrf_score=0.0,
+        )
+        return bool(self.rerank("home office deduction", [sample]))
+
+
+def resolve_rerank_model_id(
+    *,
+    preferred_model_id: str = DEFAULT_RERANK_MODEL_ID,
+    inference_profile_id: str = DEFAULT_RERANK_INFERENCE_PROFILE_ID,
+) -> str:
+    return inference_profile_id or preferred_model_id
 
 
 class BedrockCitationGenerator:
@@ -234,7 +284,7 @@ class BedrockCitationGenerator:
         temperature: float = 0.0,
     ) -> None:
         self._client = client or make_bedrock_runtime_client(region_name=region_name)
-        self.model_id = model_id
+        self.model_id = resolve_runtime_model_id(model_id)
         self.max_tokens = max_tokens
         self.temperature = temperature
 

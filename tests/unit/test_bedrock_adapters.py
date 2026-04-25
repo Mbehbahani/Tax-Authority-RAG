@@ -162,7 +162,7 @@ def test_parse_claude_response_rejects_unretrieved_chunk_id():
 
 def test_bedrock_generator_falls_back_to_deterministic_safe_answer_on_bad_json():
     client = _RuntimeClient({"content": [{"type": "text", "text": "not-json"}]})
-    generator = BedrockCitationGenerator(client=client)
+    generator = BedrockCitationGenerator(client=client, model_id="eu.anthropic.claude-3-7-sonnet-20250219-v1:0")
     answer = generator.compose("Can a taxpayer deduct home office expenses?", [_chunk("c1")])
     assert not answer.abstained
     assert answer.citations[0].chunk_id == "c1"

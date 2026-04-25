@@ -10,6 +10,6 @@ pytest==8.3.4
 opensearch-py  # OpenSearch client library
 # redis
 boto3  # Optional Stage 2 Bedrock catalog/runtime compatibility checks
-# deepeval
+deepeval  # Stage 4 formal RAG evaluation framework; offline tests use deterministic metrics
 # opentelemetry-api
 # opentelemetry-sdk

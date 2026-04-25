@@ -13,13 +13,12 @@ import pytest
 
 from app.rag.bedrock import (
     DEFAULT_BEDROCK_REGION,
-    DEFAULT_EMBED_MODEL_ID,
-    DEFAULT_FAST_MODEL_ID,
     EXPECTED_STAGE2_MODEL_IDS,
     BedrockEmbeddingModel,
     check_model_catalog_availability,
     make_bedrock_catalog_client,
     make_bedrock_runtime_client,
+    resolve_runtime_model_id,
 )
 
 
@@ -38,7 +37,10 @@ def test_live_bedrock_catalog_lists_stage2_models():
 
 def test_live_bedrock_embedding_minimal_invocation():
     client = make_bedrock_runtime_client(region_name=DEFAULT_BEDROCK_REGION)
-    embedder = BedrockEmbeddingModel(client=client, model_id=DEFAULT_EMBED_MODEL_ID)
+    embedder = BedrockEmbeddingModel(
+        client=client,
+        model_id=resolve_runtime_model_id(os.getenv("BEDROCK_EMBEDDING_MODEL_ID", "eu.cohere.embed-v4:0")),
+    )
     vector = embedder.embed("home office deduction")
     assert vector
     assert all(isinstance(value, float) for value in vector)
@@ -47,7 +49,7 @@ def test_live_bedrock_embedding_minimal_invocation():
 def test_live_bedrock_fast_model_minimal_invocation():
     client = make_bedrock_runtime_client(region_name=DEFAULT_BEDROCK_REGION)
     response = client.invoke_model(
-        modelId=DEFAULT_FAST_MODEL_ID,
+        modelId=resolve_runtime_model_id(os.getenv("BEDROCK_FAST_MODEL_ID", "eu.anthropic.claude-haiku-4-5-20251001-v1:0")),
         body=(
             '{"anthropic_version":"bedrock-2023-05-31","max_tokens":20,'
             '"temperature":0,"messages":[{"role":"user","content":[{"type":"text",'
