@@ -1,0 +1,31 @@
+{
+  "name": "rrf_rerank_cases",
+  "description": "Unit-level cases for reciprocal rank fusion and reranking boundaries.",
+  "rrf": {
+    "rank_constant": 60,
+    "formula": "score(doc) = sum(1 / (rank_constant + rank_i(doc)))"
+  },
+  "cases": [
+    {
+      "id": "RRF_EXACT_AND_SEMANTIC_SIGNAL",
+      "bm25_ranked": ["DOC-CASE-001", "DOC-LEG-001", "DOC-POL-001"],
+      "vector_ranked": ["DOC-LEG-001", "DOC-CASE-001", "DOC-ELRN-001"],
+      "expected_top_contains": ["DOC-CASE-001", "DOC-LEG-001"],
+      "reason": "Legal retrieval benefits when exact identifier and semantic similarity both contribute."
+    },
+    {
+      "id": "RERANK_CANDIDATE_CAP",
+      "fused_candidate_count": 80,
+      "rerank_max_candidates": 60,
+      "final_top_n": 8,
+      "assertions": ["reranker_receives_at_most_60", "generator_receives_at_most_8"]
+    },
+    {
+      "id": "NO_RESTRICTED_RERANK_INPUT",
+      "user_role": "helpdesk",
+      "restricted_candidate": "DOC-FIOD-001",
+      "assertions": ["restricted_candidate_not_in_bm25_results", "restricted_candidate_not_in_vector_results", "restricted_candidate_not_in_rerank_input"]
+    }
+  ]
+}
+

@@ -1,0 +1,41 @@
+{
+  "queries": [
+    {
+      "id": "Q_EXACT_ECLI_INSPECTOR",
+      "user_id": "u_inspector_01",
+      "query": "Ruling ECLI:NL:HR:2023:123",
+      "purpose": "Exact identifier retrieval using BM25 plus hybrid support."
+    },
+    {
+      "id": "Q_SEMANTIC_HELPDESK_HOME_OFFICE",
+      "user_id": "u_helpdesk_01",
+      "query": "Can a taxpayer deduct home office expenses?",
+      "purpose": "Semantic FAQ-style query with helpdesk-safe citations."
+    },
+    {
+      "id": "Q_RBAC_DENIED_HELPDESK_FIOD",
+      "user_id": "u_helpdesk_01",
+      "query": "Summarize fraud investigation insights for home office deduction abuse.",
+      "purpose": "RBAC denial and safe abstention."
+    },
+    {
+      "id": "Q_LEGAL_COUNSEL_INTERPRETATION",
+      "user_id": "u_legal_01",
+      "query": "What is the legal interpretation of home office deduction after ECLI:NL:HR:2023:123?",
+      "purpose": "Legal counsel can use legislation, case law, and legal-access material."
+    },
+    {
+      "id": "Q_VERSION_CONFLICT_2023",
+      "user_id": "u_helpdesk_01",
+      "query": "What home office deduction rule applies for tax year 2023?",
+      "purpose": "Zero-hallucination version/effective-date test."
+    },
+    {
+      "id": "Q_CACHE_FAQ_BOX1",
+      "user_id": "u_helpdesk_01",
+      "query": "What is the Box 1 tax rate for 2024?",
+      "purpose": "Semantic cache safety and insufficient-context abstention unless source exists."
+    }
+  ]
+}
+

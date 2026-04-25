@@ -1,0 +1,64 @@
+{
+  "name": "cache_rbac_cases",
+  "description": "Security fixtures for authorization-safe semantic caching and database-level RBAC.",
+  "semantic_cache": {
+    "backend": "Redis",
+    "similarity_metric": "cosine",
+    "safe_threshold_start": 0.95,
+    "minimum_threshold": 0.92,
+    "cache_key_required_fields": [
+      "normalized_query_hash",
+      "embedding_model_version",
+      "corpus_version",
+      "role_scope",
+      "clearance",
+      "classification_scope",
+      "allowed_roles_hash",
+      "citation_ids_hash"
+    ],
+    "never_cache": [
+      "uncited_answers",
+      "abstentions_with_sensitive_reasoning",
+      "answers_using_restricted_docs_for_high_clearance_roles_when_lower_roles_may_ask_same_query",
+      "answers_with_incomplete_citations"
+    ]
+  },
+  "rbac": {
+    "must_apply_before": ["bm25_scoring", "knn_vector_scoring", "fusion", "reranking", "prompt_construction", "cache_lookup", "cache_write"],
+    "forbidden": ["post_filter_after_retrieval", "llm_authorization_decision", "shared_cache_across_roles"]
+  },
+  "cases": [
+    {
+      "id": "CACHE_HELPDESK_NO_INSPECTOR_REUSE",
+      "first_user": "u_inspector_01",
+      "second_user": "u_helpdesk_01",
+      "query_similarity": 0.97,
+      "first_answer_citations": ["DOC-CASE-001"],
+      "expected_behavior": "deny_cache_reuse_because_role_scope_and_citations_differ"
+    },
+    {
+      "id": "CACHE_FAQ_SAFE_HIT",
+      "first_user": "u_helpdesk_01",
+      "second_user": "u_helpdesk_01",
+      "query_similarity": 0.96,
+      "citation_set_same": true,
+      "corpus_version_same": true,
+      "expected_behavior": "allow_cache_hit"
+    },
+    {
+      "id": "RBAC_PRE_VECTOR_FILTER",
+      "user_id": "u_helpdesk_01",
+      "query": "fraud investigation home office",
+      "restricted_doc": "DOC-FIOD-001",
+      "expected_behavior": "restricted_doc_absent_before_vector_scoring"
+    },
+    {
+      "id": "RBAC_DLS_AND_QUERY_FILTER",
+      "user_id": "u_helpdesk_01",
+      "clearance": 2,
+      "required_filters": ["allowed_roles contains helpdesk", "classification_level <= 2", "must_not FIOD"],
+      "expected_behavior": "zero_restricted_docs_retrieved"
+    }
+  ]
+}
+

@@ -1,0 +1,70 @@
+{
+  "name": "langgraph_crag_state_cases",
+  "description": "Unit fixtures for deterministic CRAG/LangGraph state transitions.",
+  "states": [
+    "START",
+    "AUTH_CONTEXT",
+    "CLASSIFY_QUERY",
+    "DECOMPOSE_QUERY",
+    "RETRIEVE",
+    "RERANK",
+    "GRADE_CONTEXT",
+    "REWRITE_QUERY",
+    "HYDE_QUERY",
+    "GENERATE_WITH_CITATIONS",
+    "VALIDATE_CITATIONS",
+    "ABSTAIN",
+    "END"
+  ],
+  "limits": {
+    "max_retrieval_attempts": 2,
+    "max_query_rewrites": 1,
+    "max_decomposition_subqueries": 4,
+    "max_hyde_attempts": 1
+  },
+  "cases": [
+    {
+      "id": "CRAG_RELEVANT_GENERATE",
+      "grader_label": "Relevant",
+      "citation_complete": true,
+      "expected_next_state": "GENERATE_WITH_CITATIONS",
+      "final_state": "END"
+    },
+    {
+      "id": "CRAG_AMBIGUOUS_DECOMPOSE",
+      "grader_label": "Ambiguous",
+      "attempt": 0,
+      "expected_next_state": "DECOMPOSE_QUERY",
+      "reason": "Multi-part or conflicting evidence should be decomposed before answer generation."
+    },
+    {
+      "id": "CRAG_IRRELEVANT_REWRITE_OR_HYDE",
+      "grader_label": "Irrelevant",
+      "attempt": 0,
+      "expected_next_state_options": ["REWRITE_QUERY", "HYDE_QUERY"],
+      "reason": "Irrelevant retrieval should trigger one bounded correction attempt."
+    },
+    {
+      "id": "CRAG_IRRELEVANT_RETRY_EXHAUSTED_ABSTAIN",
+      "grader_label": "Irrelevant",
+      "attempt": 2,
+      "expected_next_state": "ABSTAIN",
+      "reason": "No unbounded retries; abstain when evidence remains irrelevant."
+    },
+    {
+      "id": "CRAG_UNAUTHORIZED_ONLY_ABSTAIN",
+      "grader_label": "Irrelevant",
+      "retrieval_reason": "only_unauthorized_relevant_docs_exist",
+      "expected_next_state": "ABSTAIN",
+      "must_not_call": ["GENERATE_WITH_CITATIONS"]
+    },
+    {
+      "id": "CRAG_CITATION_VALIDATION_FAILS_ABSTAIN",
+      "grader_label": "Relevant",
+      "citation_complete": false,
+      "expected_next_state": "ABSTAIN",
+      "reason": "Relevant context still cannot produce answer without exact citations."
+    }
+  ]
+}
+

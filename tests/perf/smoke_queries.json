@@ -1,0 +1,32 @@
+{
+  "name": "perf_smoke_queries",
+  "ttft_target_seconds": 1.5,
+  "queries": [
+    {
+      "id": "SMOKE_EXACT_ECLI",
+      "query": "Ruling ECLI:NL:HR:2023:123",
+      "user_id": "u_inspector_01",
+      "ttft_seconds_max": 1.5
+    },
+    {
+      "id": "SMOKE_SEMANTIC_HOME_OFFICE",
+      "query": "deductibility of home office expenses",
+      "user_id": "u_helpdesk_01",
+      "ttft_seconds_max": 1.5
+    },
+    {
+      "id": "SMOKE_RBAC_DENIED_FIOD",
+      "query": "fraud investigation indicators for home office deductions",
+      "user_id": "u_helpdesk_01",
+      "ttft_seconds_max": 1.5,
+      "expected_behavior": "safe_abstention_no_fiod_retrieval"
+    },
+    {
+      "id": "SMOKE_CACHE_FAQ",
+      "query": "What is the Box 1 tax rate for 2024?",
+      "user_id": "u_helpdesk_01",
+      "cache_hit_ttft_seconds_max": 0.5
+    }
+  ]
+}
+

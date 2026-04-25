@@ -1,0 +1,52 @@
+name: RAG CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint placeholder
+        run: python -m compileall app
+      - name: Unit tests placeholder
+        run: echo "TODO: pytest tests/unit"
+
+  integration-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integration and security placeholder
+        run: echo "TODO: run integration and RBAC leakage tests"
+
+  rag-eval-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: RAG eval smoke placeholder
+        run: echo "TODO: run smoke eval against tests/eval/smoke_eval.json"
+
+  perf-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Performance smoke placeholder
+        run: echo "TODO: run TTFT/p95 smoke checks"
+
+  release-gate:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release gate placeholder
+        run: echo "TODO: full eval, p99, OOM, load, and audit gates"
+

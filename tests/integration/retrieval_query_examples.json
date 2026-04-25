@@ -1,0 +1,54 @@
+{
+  "name": "retrieval_query_examples",
+  "description": "Expected retrieval query shapes for high-precision hybrid OpenSearch retrieval.",
+  "defaults": {
+    "lexical_top_k": 50,
+    "vector_top_k": 50,
+    "fused_candidates": 80,
+    "rrf_rank_constant": 60,
+    "rerank_max_candidates": 60,
+    "final_top_n": 8,
+    "hnsw_ef_search": 128
+  },
+  "rbac_filter_helpdesk_clearance_2": {
+    "bool": {
+      "filter": [
+        {"term": {"allowed_roles": "helpdesk"}},
+        {"range": {"classification_level": {"lte": 2}}}
+      ],
+      "must_not": [
+        {"term": {"classification_tags": "FIOD"}},
+        {"term": {"classification_tags": "fraud_investigation"}}
+      ]
+    }
+  },
+  "queries": [
+    {
+      "id": "HYBRID_EXACT_ECLI",
+      "user_id": "u_inspector_01",
+      "query_text": "Ruling ECLI:NL:HR:2023:123",
+      "expected_strategy": "bm25_identifier_boost_plus_vector_support",
+      "must_boost_fields": ["ecli^12", "document_id^8", "text^2"],
+      "expected_may_retrieve": ["DOC-CASE-001"],
+      "expected_must_not_retrieve": ["DOC-FIOD-001"]
+    },
+    {
+      "id": "HYBRID_SEMANTIC_HOME_OFFICE",
+      "user_id": "u_helpdesk_01",
+      "query_text": "deductibility of home office expenses",
+      "expected_strategy": "bm25_plus_knn_rrf_then_rerank",
+      "expected_may_retrieve": ["DOC-LEG-001", "DOC-POL-001", "DOC-ELRN-001"],
+      "expected_must_not_retrieve": ["DOC-CASE-001", "DOC-FIOD-001"]
+    },
+    {
+      "id": "HYBRID_RBAC_DENIED_FIOD",
+      "user_id": "u_helpdesk_01",
+      "query_text": "fraud investigation indicators for home office deductions",
+      "expected_strategy": "rbac_filter_before_bm25_and_knn",
+      "expected_may_retrieve": [],
+      "expected_must_not_retrieve": ["DOC-FIOD-001"],
+      "assertion": "restricted_docs_absent_before_fusion_and_rerank"
+    }
+  ]
+}
+

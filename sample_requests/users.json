@@ -1,0 +1,33 @@
+{
+  "users": [
+    {
+      "user_id": "u_helpdesk_01",
+      "role": "helpdesk",
+      "clearance": 2,
+      "department_scope": ["taxpayer_support"],
+      "need_to_know_groups": ["general_taxpayer_support"]
+    },
+    {
+      "user_id": "u_inspector_01",
+      "role": "tax_inspector",
+      "clearance": 3,
+      "department_scope": ["income_tax"],
+      "need_to_know_groups": ["income_tax_audits"]
+    },
+    {
+      "user_id": "u_legal_01",
+      "role": "legal_counsel",
+      "clearance": 4,
+      "department_scope": ["legal"],
+      "need_to_know_groups": ["legal_interpretation"]
+    },
+    {
+      "user_id": "u_fiod_01",
+      "role": "fiod_investigator",
+      "clearance": 5,
+      "department_scope": ["fiod"],
+      "need_to_know_groups": ["FIOD-2024-001"]
+    }
+  ]
+}
+

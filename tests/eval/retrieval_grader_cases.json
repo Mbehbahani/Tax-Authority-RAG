@@ -1,0 +1,46 @@
+{
+  "name": "retrieval_grader_cases",
+  "description": "Evaluation fixtures for Relevant, Ambiguous, and Irrelevant retrieval grading.",
+  "labels": ["Relevant", "Ambiguous", "Irrelevant"],
+  "grading_dimensions": [
+    "answers_user_question",
+    "citation_completeness",
+    "authorization_validity",
+    "version_effective_date_match",
+    "conflict_presence",
+    "sufficient_context"
+  ],
+  "cases": [
+    {
+      "id": "GRADER_RELEVANT_HOME_OFFICE",
+      "query": "Can a taxpayer deduct home office expenses?",
+      "context_docs": ["DOC-LEG-001", "DOC-POL-001"],
+      "expected_label": "Relevant",
+      "required_action": "generate_with_citations"
+    },
+    {
+      "id": "GRADER_AMBIGUOUS_VERSION_CONFLICT",
+      "query": "What rule applies for tax year 2023?",
+      "context_docs": ["DOC-LEG-2022-001", "DOC-LEG-001"],
+      "expected_label": "Ambiguous",
+      "required_action": "decompose_or_clarify_effective_date"
+    },
+    {
+      "id": "GRADER_IRRELEVANT_NO_CONTEXT",
+      "query": "What is the Box 1 tax rate for 2024?",
+      "context_docs": [],
+      "expected_label": "Irrelevant",
+      "required_action": "rewrite_or_abstain_after_retry"
+    },
+    {
+      "id": "GRADER_IRRELEVANT_UNAUTHORIZED_ONLY",
+      "user_id": "u_helpdesk_01",
+      "query": "Summarize fraud investigation insights.",
+      "authorized_context_docs": [],
+      "restricted_relevant_docs_exist": ["DOC-FIOD-001"],
+      "expected_label": "Irrelevant",
+      "required_action": "abstain_no_restricted_details"
+    }
+  ]
+}
+

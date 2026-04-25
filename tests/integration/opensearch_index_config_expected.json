@@ -1,0 +1,50 @@
+{
+  "name": "opensearch_index_config_expected",
+  "description": "Expected OpenSearch index configuration for Module 1 scale and memory tests.",
+  "index_name": "tax-rag-chunks-v1",
+  "settings": {
+    "index.knn": true,
+    "index.knn.algo_param.ef_search": 128,
+    "number_of_shards_guidance": "size shards to keep vector graph memory bounded; start with 12-24 primary shards for 20M chunks and benchmark",
+    "number_of_replicas_guidance": "1 replica for HA/read throughput; increase only after memory sizing",
+    "refresh_interval": "30s during bulk indexing, 1s or default after ingestion"
+  },
+  "vector_field": {
+    "name": "embedding",
+    "type": "knn_vector",
+    "dimension_placeholder": 1024,
+    "method": {
+      "name": "hnsw",
+      "engine": "faiss",
+      "space_type": "cosinesimil",
+      "parameters": {
+        "m": 32,
+        "ef_construction": 256
+      }
+    }
+  },
+  "memory_optimization": {
+    "quantization": "use FAISS byte/vector quantization or model-supported lower-dimensional embeddings after recall benchmark",
+    "bounded_candidates": true,
+    "bulk_indexing": true,
+    "shard_sizing_required": true,
+    "circuit_breakers_required": true
+  },
+  "required_fields": [
+    "chunk_id",
+    "document_id",
+    "document_name",
+    "source_type",
+    "text",
+    "embedding",
+    "article",
+    "paragraph",
+    "section_path",
+    "effective_from",
+    "effective_to",
+    "version",
+    "classification_level",
+    "allowed_roles"
+  ]
+}
+

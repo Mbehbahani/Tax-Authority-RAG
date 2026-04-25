@@ -1,0 +1,76 @@
+{
+  "name": "full_performance_suite",
+  "description": "Performance acceptance scenarios for 20M+ chunks, low TTFT, OOM prevention, and latency spike resilience.",
+  "targets": {
+    "ttft_seconds": 1.5,
+    "cache_hit_ttft_seconds": 0.5,
+    "retrieval_p95_ms": 400,
+    "rerank_p95_ms": 350,
+    "prompt_assembly_p95_ms": 100,
+    "end_to_end_p95_seconds": 3.5,
+    "error_rate_percent_max": 1,
+    "oom_events_max": 0,
+    "include_p95": true,
+    "include_p99": true,
+    "include_oom_pressure": true,
+    "include_latency_spikes": true
+  },
+  "scale_assumptions": {
+    "documents": 500000,
+    "chunks_min": 20000000,
+    "lexical_top_k": 50,
+    "vector_top_k": 50,
+    "fused_candidates": 80,
+    "rerank_max_candidates": 60,
+    "final_context_chunks": 8
+  },
+  "scenarios": [
+    {
+      "id": "PERF1_EXACT_IDENTIFIER",
+      "query": "Ruling ECLI:NL:HR:2023:123",
+      "expected_path": "bm25_exact_dominant_hybrid",
+      "ttft_seconds_max": 1.5,
+      "retrieval_p95_ms_max": 250
+    },
+    {
+      "id": "PERF2_SEMANTIC_TAX_QUERY",
+      "query": "deductibility of home office expenses",
+      "expected_path": "hybrid_rrf_cross_encoder_rerank",
+      "ttft_seconds_max": 1.5,
+      "rerank_max_candidates": 60
+    },
+    {
+      "id": "PERF3_RBAC_FILTERED_LARGE_CORPUS",
+      "user_id": "u_helpdesk_01",
+      "query": "fraud investigation indicators for home office deductions",
+      "expected_path": "rbac_filtered_before_retrieval_safe_abstention",
+      "ttft_seconds_max": 1.5,
+      "must_not_score_or_rerank": ["FIOD"]
+    },
+    {
+      "id": "PERF4_CONCURRENT_MIXED_WORKLOAD",
+      "workload_mix": {"semantic_faq_percent": 70, "exact_identifier_percent": 20, "adversarial_rbac_denied_percent": 10},
+      "concurrent_users": [50, 100, 250],
+      "measure": ["ttft_p50", "ttft_p95", "ttft_p99", "retrieval_p95", "rerank_p95", "error_rate", "queue_time"]
+    },
+    {
+      "id": "PERF5_OOM_MEMORY_PRESSURE",
+      "simulate": ["large_index", "high_concurrent_knn", "high_ef_search", "rerank_candidate_bursts"],
+      "expected_controls": ["bounded_ef_search", "bounded_top_k", "circuit_breakers", "memory_alarms", "request_timeouts"],
+      "oom_events_max": 0
+    },
+    {
+      "id": "PERF6_CACHE_HIT_TTFT",
+      "query": "What is the Box 1 tax rate for 2024?",
+      "expected_path": "authorization_safe_semantic_cache_hit",
+      "ttft_seconds_max": 0.5,
+      "cache_key_must_include": ["role_scope", "clearance", "corpus_version", "citation_ids"]
+    },
+    {
+      "id": "PERF7_LATENCY_SPIKE_RESILIENCE",
+      "inject": ["slow_llm", "slow_opensearch_shard", "redis_timeout", "reranker_slowdown"],
+      "expected_behavior": "timeout_or_degrade_safely_without_leakage_or_uncited_answer"
+    }
+  ]
+}
+

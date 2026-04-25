@@ -1,0 +1,47 @@
+{
+  "expected_behaviors": [
+    {
+      "query_id": "Q_EXACT_ECLI_INSPECTOR",
+      "may_retrieve": ["DOC-CASE-001"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-LEGAL-001"],
+      "expected_generation": "answer_with_case_law_citation_or_summarize_retrieved_ruling",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_SEMANTIC_HELPDESK_HOME_OFFICE",
+      "may_retrieve": ["DOC-LEG-001", "DOC-POL-001", "DOC-ELRN-001"],
+      "must_not_retrieve": ["DOC-CASE-001", "DOC-FIOD-001", "DOC-LEGAL-001"],
+      "expected_generation": "helpdesk_safe_answer_with_exact_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_RBAC_DENIED_HELPDESK_FIOD",
+      "may_retrieve": [],
+      "must_not_retrieve": ["DOC-FIOD-001"],
+      "expected_generation": "abstain_no_restricted_details",
+      "required_citation_fields": []
+    },
+    {
+      "query_id": "Q_LEGAL_COUNSEL_INTERPRETATION",
+      "may_retrieve": ["DOC-LEG-001", "DOC-CASE-001"],
+      "must_not_retrieve": ["DOC-FIOD-001"],
+      "expected_generation": "legal_interpretation_with_legislation_and_case_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_VERSION_CONFLICT_2023",
+      "may_retrieve": ["DOC-LEG-2022-001", "DOC-LEG-001"],
+      "must_not_retrieve": ["DOC-FIOD-001"],
+      "expected_generation": "abstain_or_explain_insufficient_2023_context",
+      "required_behavior": "do_not_apply_2022_or_2024_rule_to_2023_without_retrieved_transition_rule"
+    },
+    {
+      "query_id": "Q_CACHE_FAQ_BOX1",
+      "may_retrieve": [],
+      "must_not_retrieve": ["DOC-FIOD-001"],
+      "expected_generation": "abstain_unless_authorized_box1_source_is_added",
+      "cache_requirement": "do_not_cache_uncited_or_insufficient_answer_as_factual_advice"
+    }
+  ]
+}
+

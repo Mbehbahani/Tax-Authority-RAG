@@ -1,0 +1,41 @@
+{
+  "name": "ci_eval_gates",
+  "description": "CI/CD evaluation gates before deploying a new embedding model or LLM.",
+  "pr_gate": {
+    "max_runtime_minutes": 10,
+    "required_checks": ["unit", "chunking", "rbac_smoke", "citation_format", "rag_eval_smoke"],
+    "thresholds": {
+      "faithfulness_min": 0.95,
+      "context_precision_min": 0.85,
+      "citation_completeness_min": 1.0,
+      "rbac_leakage_count_max": 0
+    }
+  },
+  "main_gate": {
+    "required_checks": ["integration", "security", "retrieval_quality", "zero_hallucination", "perf_smoke"],
+    "thresholds": {
+      "faithfulness_min": 0.97,
+      "context_precision_min": 0.9,
+      "context_recall_min": 0.85,
+      "answer_relevance_min": 0.9,
+      "citation_accuracy_min": 1.0,
+      "rbac_leakage_count_max": 0,
+      "ttft_p95_seconds_max": 1.5
+    }
+  },
+  "release_gate": {
+    "required_checks": ["full_deepeval", "rbac_adversarial", "load", "oom_pressure", "latency_spike", "audit_review"],
+    "thresholds": {
+      "faithfulness_min": 0.98,
+      "context_precision_min": 0.92,
+      "context_recall_min": 0.9,
+      "citation_completeness_min": 1.0,
+      "citation_accuracy_min": 1.0,
+      "rbac_leakage_count_max": 0,
+      "oom_events_max": 0,
+      "ttft_p95_seconds_max": 1.5,
+      "latency_p99_seconds_max": 8.0
+    }
+  }
+}
+

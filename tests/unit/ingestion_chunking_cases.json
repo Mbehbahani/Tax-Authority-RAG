@@ -1,0 +1,76 @@
+{
+  "name": "ingestion_chunking_cases",
+  "description": "Unit test fixtures for legal-aware chunking and metadata preservation.",
+  "source_documents": [
+    "sample_corpus/legislation/income_tax_act_2024.md",
+    "sample_corpus/legislation/income_tax_act_2022_historical.md",
+    "sample_corpus/case_law/supreme_court_home_office_2023.md",
+    "sample_corpus/policies/helpdesk_home_office_guideline.md",
+    "sample_corpus/elearning/home_office_deduction_training.md"
+  ],
+  "required_chunk_metadata": [
+    "chunk_id",
+    "document_id",
+    "document_name",
+    "source_type",
+    "article",
+    "paragraph",
+    "section_path",
+    "effective_from",
+    "effective_to",
+    "version",
+    "classification_level",
+    "allowed_roles"
+  ],
+  "cases": [
+    {
+      "id": "CHUNK_LEGISLATION_ARTICLE_PARAGRAPH",
+      "source": "sample_corpus/legislation/income_tax_act_2024.md",
+      "input_anchor": "#### Article 3.12 — Home Office Expenses",
+      "expected_chunks": [
+        {
+          "article": "3.12",
+          "paragraph": "1",
+          "section_path_contains": ["Chapter 3", "Section 3.1", "Article 3.12"],
+          "must_include_text": "used primarily for income-producing activities"
+        },
+        {
+          "article": "3.12",
+          "paragraph": "2",
+          "section_path_contains": ["Chapter 3", "Section 3.1", "Article 3.12"],
+          "must_include_text": "contemporaneous records"
+        }
+      ]
+    },
+    {
+      "id": "CHUNK_HISTORICAL_EFFECTIVE_DATES",
+      "source": "sample_corpus/legislation/income_tax_act_2022_historical.md",
+      "expected_metadata": {
+        "effective_from": "2022-01-01",
+        "effective_to": "2022-12-31",
+        "version": "2022-historical"
+      },
+      "must_not_apply_to_tax_year_without_version_filter": 2024
+    },
+    {
+      "id": "CHUNK_CASE_LAW_REASONING_HOLDING",
+      "source": "sample_corpus/case_law/supreme_court_home_office_2023.md",
+      "expected_metadata": {
+        "ecli": "ECLI:NL:HR:2023:123",
+        "source_type": "case_law"
+      },
+      "expected_sections": ["Facts", "Legal Question", "Reasoning", "Holding"],
+      "expected_paragraphs": ["10", "11", "14", "15", "18"]
+    },
+    {
+      "id": "CHUNK_RBAC_METADATA_PRESERVED",
+      "source": "sample_corpus/policies/fiod_fraud_investigation_memo.md",
+      "expected_metadata": {
+        "classification_level": 5,
+        "allowed_roles": ["fiod_investigator"],
+        "case_scope": "FIOD-2024-001"
+      }
+    }
+  ]
+}
+

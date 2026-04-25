@@ -1,0 +1,61 @@
+{
+  "name": "synthetic_tax_authority_sample_corpus",
+  "warning": "Synthetic documents for tests only. Not real fiscal advice.",
+  "documents": [
+    {
+      "document_id": "DOC-LEG-001",
+      "document_name": "Synthetic Income Tax Act 2024",
+      "source_type": "legislation",
+      "path": "sample_corpus/legislation/income_tax_act_2024.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"],
+      "effective_from": "2024-01-01",
+      "effective_to": null
+    },
+    {
+      "document_id": "DOC-LEG-2022-001",
+      "document_name": "Synthetic Income Tax Act 2022 Historical Version",
+      "source_type": "legislation",
+      "path": "sample_corpus/legislation/income_tax_act_2022_historical.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"],
+      "effective_from": "2022-01-01",
+      "effective_to": "2022-12-31"
+    },
+    {
+      "document_id": "DOC-CASE-001",
+      "document_name": "Synthetic Supreme Court Home Office Ruling",
+      "source_type": "case_law",
+      "path": "sample_corpus/case_law/supreme_court_home_office_2023.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"],
+      "ecli": "ECLI:NL:HR:2023:123"
+    },
+    {
+      "document_id": "DOC-POL-001",
+      "document_name": "Synthetic Helpdesk Home Office Guideline",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/helpdesk_home_office_guideline.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector"]
+    },
+    {
+      "document_id": "DOC-FIOD-001",
+      "document_name": "Synthetic FIOD Fraud Investigation Memo",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/fiod_fraud_investigation_memo.md",
+      "classification_level": 5,
+      "allowed_roles": ["fiod_investigator"],
+      "case_scope": "FIOD-2024-001"
+    },
+    {
+      "document_id": "DOC-ELRN-001",
+      "document_name": "Synthetic Home Office Deduction Training",
+      "source_type": "elearning",
+      "path": "sample_corpus/elearning/home_office_deduction_training.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"]
+    }
+  ]
+}
+
