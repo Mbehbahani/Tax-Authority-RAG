@@ -48,10 +48,13 @@ class RagService:
         *,
         chunks: list[Chunk],
         backend: RetrievalBackend | None = None,
-        embedder: EmbeddingModel | None = None,
+        embedder: Any | None = None,
         cache: SemanticCache | None = None,
         corpus_version: str = DEFAULT_CORPUS_VERSION,
         embedding_model_version: str = DEFAULT_EMBEDDING_MODEL_VERSION,
+        reranker: Any | None = None,
+        answer_composer: Any | None = None,
+        generation_model_version: str = "deterministic-extractive-v1",
     ) -> None:
         self._embedder = embedder or EmbeddingModel()
         self._backend = backend or InMemoryOpenSearchBackend(chunks, embedder=self._embedder)
@@ -59,6 +62,9 @@ class RagService:
         self._cache = cache or SemanticCache(embedder=self._embedder, enabled=False)
         self._corpus_version = corpus_version
         self._embedding_model_version = embedding_model_version
+        self._reranker = reranker
+        self._answer_composer = answer_composer
+        self._generation_model_version = generation_model_version
 
     # -----------------------------------------------------------------
 
@@ -111,7 +117,12 @@ class RagService:
                 )
 
         # CRAG execution.
-        deps = GraphDeps(backend=self._backend, embedder=self._embedder)
+        deps = GraphDeps(
+            backend=self._backend,
+            embedder=self._embedder,
+            reranker=self._reranker,
+            answer_composer=self._answer_composer,
+        )
         state = run_graph(user=user, query=query, deps=deps)
 
         answer_text = state.answer.text if state.answer else ""
@@ -144,6 +155,8 @@ class RagService:
             abstained=abstained,
             abstention_reason=abstention_reason,
             injection_detected=injection,
+            embedding_model_version=self._embedding_model_version,
+            generation_model_version=self._generation_model_version,
         )
 
         elapsed = time.perf_counter() - start
@@ -188,7 +201,9 @@ def build_service_from_paths(
     retrieval_backend: str | None = None,
 ) -> tuple[RagService, dict[str, UserContext]]:
     chunks = ingest_corpus(manifest_path)
-    embedder = EmbeddingModel()
+    embedder, embedding_model_version = _build_embedder_from_env()
+    reranker = _build_reranker_from_env()
+    answer_composer, generation_model_version = _build_answer_composer_from_env()
     backend_name = (retrieval_backend or os.getenv("RETRIEVAL_BACKEND", "memory")).lower()
     if backend_name == "opensearch":
         backend = OpenSearchBackend(
@@ -206,9 +221,44 @@ def build_service_from_paths(
         backend=backend,
         embedder=embedder,
         cache=cache,
+        embedding_model_version=embedding_model_version,
+        reranker=reranker,
+        answer_composer=answer_composer,
+        generation_model_version=generation_model_version,
     )
     users = load_users(users_path) if users_path else {}
     return service, users
+
+
+def _env_true(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() == "true"
+
+
+def _build_embedder_from_env() -> tuple[Any, str]:
+    if not _env_true("BEDROCK_EMBEDDINGS_ENABLED"):
+        embedder = EmbeddingModel()
+        return embedder, embedder.name
+    from .bedrock import BedrockEmbeddingModel
+
+    embedder = BedrockEmbeddingModel()
+    return embedder, embedder.model_id
+
+
+def _build_reranker_from_env() -> Any | None:
+    if not _env_true("BEDROCK_RERANK_ENABLED"):
+        return None
+    from .bedrock import BedrockReranker
+
+    return BedrockReranker()
+
+
+def _build_answer_composer_from_env() -> tuple[Any | None, str]:
+    if not _env_true("BEDROCK_GENERATION_ENABLED"):
+        return None, "deterministic-extractive-v1"
+    from .bedrock import BedrockCitationGenerator
+
+    generator = BedrockCitationGenerator()
+    return (lambda query, context: generator.compose(query, context)), generator.model_id
 
 
 def _citation_to_dict(citation: Any) -> dict[str, str]:

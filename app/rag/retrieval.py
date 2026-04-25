@@ -456,13 +456,19 @@ def hybrid_retrieve(
     fused_candidates: int = DEFAULT_FUSED_CANDIDATES,
     rerank_max: int = DEFAULT_RERANK_MAX,
     final_top_n: int = DEFAULT_FINAL_TOP_N,
+    reranker: Any | None = None,
 ) -> tuple[list[Chunk], dict[str, Any]]:
     query_embedding = embedder.embed(query)
     lexical_hits = backend.lexical_search(query, user, top_k=lexical_top_k)
     vector_hits = backend.vector_search(query_embedding, user, top_k=vector_top_k)
     fused = reciprocal_rank_fusion([lexical_hits, vector_hits])
     candidates = take_candidates(fused, limit=fused_candidates)
-    reranked = rerank(query, candidates, max_candidates=rerank_max)
+    if reranker is None:
+        reranked = rerank(query, candidates, max_candidates=rerank_max)
+        reranker_name = "deterministic"
+    else:
+        reranked = reranker(query, candidates[:rerank_max]) if callable(reranker) else reranker.rerank(query, candidates[:rerank_max])
+        reranker_name = getattr(reranker, "model_id", reranker.__class__.__name__)
     final = take_with_complete_citations(reranked, limit=final_top_n)
 
     forbidden = [c for c in final if not is_authorized(c, user)]
@@ -475,6 +481,7 @@ def hybrid_retrieve(
         "fused_chunk_ids": [r.chunk.chunk_id for r in fused[:fused_candidates]],
         "reranked_chunk_ids": [r.chunk.chunk_id for r in reranked],
         "final_chunk_ids": [c.chunk_id for c in final],
+        "reranker": reranker_name,
     }
     return final, debug
 

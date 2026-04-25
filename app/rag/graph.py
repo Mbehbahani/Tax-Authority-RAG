@@ -289,10 +289,14 @@ class GraphDeps:
     backend: RetrievalBackend
     embedder: EmbeddingModel
     grader: Callable[[str, list[Chunk], UserContext | None], GraderResult] = None  # type: ignore[assignment]
+    reranker: Callable[[str, list], list] | None = None
+    answer_composer: Callable[[str, list[Chunk]], GeneratedAnswer] | None = None
 
     def __post_init__(self) -> None:
         if self.grader is None:
             self.grader = lambda q, c, u=None: grade_context(q, c, user=u)
+        if self.answer_composer is None:
+            self.answer_composer = lambda q, c: compose_answer(q, c)
 
 
 def _retrieve(state: RagState, deps: GraphDeps) -> None:
@@ -302,14 +306,15 @@ def _retrieve(state: RagState, deps: GraphDeps) -> None:
         user=state.user,
         backend=deps.backend,
         embedder=deps.embedder,
+        reranker=deps.reranker,
     )
     state.retrieved_chunks = final_context
     state.reranked_chunks = final_context
     state.debug.setdefault("retrievals", []).append(debug)
 
 
-def _generate(state: RagState) -> None:
-    state.answer = compose_answer(state.query, state.reranked_chunks)
+def _generate(state: RagState, deps: GraphDeps) -> None:
+    state.answer = deps.answer_composer(state.query, state.reranked_chunks)  # type: ignore[misc]
     state.citations = state.answer.citations
 
 
@@ -420,7 +425,7 @@ def run_graph(
         return state
 
     state.trace.append("GENERATE_WITH_CITATIONS")
-    _generate(state)
+    _generate(state, deps)
 
     state.trace.append("VALIDATE_CITATIONS")
     final = _validate_citations(state)

@@ -150,7 +150,10 @@ class BedrockEmbeddingModel:
             embeddings = payload.get("embeddings", [])
             if isinstance(embeddings, dict):
                 embeddings = embeddings.get("float", [])
-            return [_coerce_vector(v) for v in embeddings]
+            vectors = [_coerce_vector(v) for v in embeddings]
+            if vectors and self.dimension != len(vectors[0]):
+                self.dimension = len(vectors[0])
+            return vectors
 
         if self.model_id.startswith("amazon.titan-embed-text"):
             return [self._embed_titan(text) for text in texts]
@@ -163,7 +166,10 @@ class BedrockEmbeddingModel:
             model_id=self.model_id,
             body={"inputText": text},
         )
-        return _coerce_vector(payload.get("embedding", []))
+        vector = _coerce_vector(payload.get("embedding", []))
+        if vector and self.dimension != len(vector):
+            self.dimension = len(vector)
+        return vector
 
 
 class BedrockReranker:
