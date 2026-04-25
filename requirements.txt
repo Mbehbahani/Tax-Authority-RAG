@@ -9,7 +9,7 @@ pytest==8.3.4
 # langgraph
 opensearch-py  # OpenSearch client library
 # redis
-# boto3
+boto3  # Optional Stage 2 Bedrock catalog/runtime compatibility checks
 # deepeval
 # opentelemetry-api
 # opentelemetry-sdk
