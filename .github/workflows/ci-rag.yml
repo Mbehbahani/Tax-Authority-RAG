@@ -5,6 +5,17 @@ name: RAG CI
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      run_live_bedrock:
+        description: "Run optional live AWS Bedrock compatibility and RAG checks"
+        required: false
+        default: false
+        type: boolean
+      run_live_opensearch:
+        description: "Run optional local OpenSearch compatibility checks in CI"
+        required: false
+        default: false
+        type: boolean
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -96,6 +107,98 @@ jobs:
       - name: Run performance smoke tests
         run: python -m pytest tests/perf -q
 
+  live-opensearch-compat:
+    name: Live OpenSearch compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_opensearch
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:2.17.1
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          OPENSEARCH_INITIAL_ADMIN_PASSWORD: LocalStage1BAdmin!123
+          OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+          bootstrap.memory_lock: "false"
+        ports:
+          - 9200:9200
+          - 9600:9600
+        options: >-
+          --health-cmd="curl -fsS http://localhost:9200 >/dev/null || exit 1"
+          --health-interval=15s
+          --health-timeout=10s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run live OpenSearch optional tests
+        env:
+          OPENSEARCH_INTEGRATION: "true"
+          OPENSEARCH_URL: http://localhost:9200
+        run: python -m pytest tests/integration/test_opensearch_backend_optional.py -q
+
+  live-bedrock-validation:
+    name: Live Bedrock validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' && inputs.run_live_bedrock
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Validate required AWS secrets
+        shell: bash
+        run: |
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || { echo "Missing secret AWS_ACCESS_KEY_ID"; exit 1; }
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || { echo "Missing secret AWS_SECRET_ACCESS_KEY"; exit 1; }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run live Bedrock compatibility and RAG checks
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+          BEDROCK_REGION: ${{ vars.BEDROCK_REGION || vars.AWS_REGION || 'eu-central-1' }}
+          BEDROCK_EMBEDDING_MODEL_ID: ${{ vars.BEDROCK_EMBEDDING_MODEL_ID || 'eu.cohere.embed-v4:0' }}
+          BEDROCK_FALLBACK_EMBEDDING_MODEL_ID: ${{ vars.BEDROCK_FALLBACK_EMBEDDING_MODEL_ID || 'amazon.titan-embed-text-v2:0' }}
+          BEDROCK_GENERATION_MODEL_ID: ${{ vars.BEDROCK_GENERATION_MODEL_ID || 'eu.anthropic.claude-3-7-sonnet-20250219-v1:0' }}
+          BEDROCK_FAST_MODEL_ID: ${{ vars.BEDROCK_FAST_MODEL_ID || 'eu.anthropic.claude-haiku-4-5-20251001-v1:0' }}
+          BEDROCK_JUDGE_MODEL_ID: ${{ vars.BEDROCK_JUDGE_MODEL_ID || 'eu.anthropic.claude-3-7-sonnet-20250219-v1:0' }}
+          BEDROCK_RERANK_MODEL_ID: ${{ vars.BEDROCK_RERANK_MODEL_ID || 'cohere.rerank-v3-5:0' }}
+          BEDROCK_RERANK_INFERENCE_PROFILE_ID: ${{ secrets.BEDROCK_RERANK_INFERENCE_PROFILE_ID }}
+          BEDROCK_LIVE_INTEGRATION: "true"
+          STAGE3_LIVE_BEDROCK_RAG: "true"
+          STAGE4_LIVE_RETRIEVAL_EVAL: "true"
+        run: |
+          python -m pytest tests/integration/test_bedrock_live_optional.py -q
+          python -m pytest tests/integration/test_stage3_bedrock_rag_optional.py -q
+          python -m pytest tests/integration/test_stage4_live_rerank_embed_optional.py -q
+
   release-gate:
     name: Full release gate
     runs-on: ubuntu-latest
@@ -121,5 +224,7 @@ jobs:
 
       - name: Run full test suite
         run: python -m pytest -q
+
+
 
 
