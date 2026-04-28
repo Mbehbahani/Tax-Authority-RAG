@@ -18,6 +18,19 @@ It is designed to show both:
 - **engineering judgment** — clear architectural tradeoffs, bounded complexity, and security-first design
 - **execution ability** — implemented code, tests, evaluation assets, live Bedrock validation, and reproducible documentation
 
+## Recommended reviewer reading order
+
+1. [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
+2. [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
+3. [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
+4. Stage reports in `docs/reports/`
+
+## Example of live testing
+
+The image below is an example of the working local test/demo interface used for validating the Bedrock-backed stack:
+
+<img src="docs/assets/readme-testing-example.png" alt="Live testing example" width="700">
+
 ## What an engineering reviewer should notice quickly
 
 - The system is **not a generic chatbot wrapper**; it is a constrained legal/fiscal RAG design with explicit safety guarantees.
@@ -113,13 +126,6 @@ docker compose -f docker-compose.test.yml up --build
 - **Assignment fit:** [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
 - **Evaluation & metrics:** [`docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
 - **Local PoC report:** [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md)
-
-### Recommended reviewer reading order
-
-1. [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
-2. [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
-3. [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
-4. Stage reports in `docs/reports/`
 
 ## Live System Evidence
 
