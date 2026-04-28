@@ -41,7 +41,92 @@
       "must_not_retrieve": ["DOC-FIOD-001"],
       "expected_generation": "abstain_unless_authorized_box1_source_is_added",
       "cache_requirement": "do_not_cache_uncited_or_insufficient_answer_as_factual_advice"
+    },
+    {
+      "query_id": "Q_RECORD_RETENTION_HELPDESK",
+      "may_retrieve": ["DOC-LEG-001", "DOC-REG-001", "DOC-POL-001", "DOC-ELRN-002"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002", "DOC-POL-003"],
+      "expected_generation": "answer_with_retention_and_recordkeeping_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_DIGITAL_RECORDS_HELPDESK",
+      "may_retrieve": ["DOC-REG-001", "DOC-ELRN-002"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "answer_with_digital_record_acceptance_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_TRANSITION_2023_HELPDESK",
+      "may_retrieve": ["DOC-LEG-2023-001"],
+      "must_not_retrieve": ["DOC-LEG-2025-DRAFT", "DOC-FIOD-001"],
+      "expected_generation": "answer_from_2023_transitional_legislation",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_DRAFT_2025_HELPDESK",
+      "may_retrieve": [],
+      "must_not_retrieve": ["DOC-LEG-2025-DRAFT", "DOC-FIOD-001"],
+      "expected_generation": "abstain_or_escalate_do_not_treat_draft_as_binding",
+      "required_citation_fields": []
+    },
+    {
+      "query_id": "Q_DRAFT_2025_LEGAL",
+      "may_retrieve": ["DOC-LEG-2025-DRAFT", "DOC-POL-003"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "legal_summary_of_draft_without_presenting_it_as_binding",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_ECLI_ALLOWED_2024",
+      "may_retrieve": ["DOC-CASE-002"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "answer_with_allowed_deduction_case_citation",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_ECLI_MIXED_USE_2022",
+      "may_retrieve": ["DOC-CASE-003"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "answer_with_mixed_use_denial_case_citation",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_ECLI_RECORDS_2021",
+      "may_retrieve": ["DOC-CASE-004"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "answer_with_records_estimation_case_citation",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_INSPECTOR_AUDIT_MANUAL",
+      "may_retrieve": ["DOC-POL-002", "DOC-LEG-001", "DOC-REG-001"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "inspector_answer_with_audit_manual_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_LEGAL_MEMO_VERSION_CONFLICT",
+      "may_retrieve": ["DOC-POL-003", "DOC-ELRN-001"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "legal_guidance_to_abstain_or_request_clarification",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_SECURITY_ESCALATION_HELPDESK",
+      "may_retrieve": ["DOC-POL-001", "DOC-ELRN-003"],
+      "must_not_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "expected_generation": "helpdesk_escalation_answer_without_restricted_content",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
+    },
+    {
+      "query_id": "Q_FIOD_ALLOWED_INVESTIGATOR",
+      "may_retrieve": ["DOC-FIOD-001", "DOC-FIOD-002"],
+      "must_not_retrieve": [],
+      "expected_generation": "authorized_fiod_answer_with_restricted_citations",
+      "required_citation_fields": ["document_name", "document_id", "article", "paragraph"]
     }
   ]
 }
+
 

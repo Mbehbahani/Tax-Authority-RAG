@@ -105,7 +105,7 @@ def test_opensearch_query_contains_rbac_filters_and_boosts(users, embedder):
         auth_filter=auth.to_opensearch_filter(),
     )
     lex = qs["lexical"]["query"]["bool"]
-    assert {"term": {"allowed_roles": "helpdesk"}} in lex["filter"]
+    assert {"terms": {"allowed_roles": ["helpdesk"]}} in lex["filter"]
     assert any("range" in f for f in lex["filter"])
     must_not_terms = {list(f["term"].values())[0] for f in lex["must_not"]}
     assert {"FIOD", "fraud_investigation"}.issubset(must_not_terms)
@@ -127,6 +127,15 @@ def test_helpdesk_rbac_query_has_fiod_denial_filters(users, embedder):
     body = auth.to_opensearch_filter()
     must_not_terms = {list(f["term"].values())[0] for f in body["bool"]["must_not"]}
     assert {"FIOD", "fraud_investigation"}.issubset(must_not_terms)
+
+
+def test_fiod_inherits_helpdesk_access_for_public_material(rag_service, users):
+    r = rag_service.ask(users["u_fiod_01"], "Can a taxpayer deduct home office expenses?")
+    assert not r.abstained
+    cited = {c["document_id"] for c in r.citations}
+    assert cited
+    assert cited.intersection({"DOC-LEG-001", "DOC-POL-001", "DOC-ELRN-001", "DOC-CASE-002"})
+    assert "DOC-FIOD-001" not in cited
 
 
 @pytest.mark.parametrize("fixture_id", [q["id"] for q in QUERY_FIXTURES["queries"]])

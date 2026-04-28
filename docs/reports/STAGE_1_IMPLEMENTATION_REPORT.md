@@ -236,7 +236,7 @@ require only local Docker OpenSearch and still avoid AWS/LLM calls.
 ## 10. Recommended Next Steps
 
 1. **Stage 2 – Bedrock compatibility checks.** Using
-   [`docs/AWS_CLI_ACCESS.md`](AWS_CLI_ACCESS.md), verify model access for the
+   [`../AWS_CLI_ACCESS.md`](../AWS_CLI_ACCESS.md), verify model access for the
    five IDs in `.env.example`. Replace `EmbeddingModel` and `compose_answer`
    with Bedrock clients; keep the `validate_citations` stage unchanged.
 2. **Real reranker.** Wire Cohere Rerank 3.5 into `rerank` and re-run the

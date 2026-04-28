@@ -1,0 +1,25 @@
+services:
+  # Stage A — Local PoC / Algorithm Validation
+  # Fast, deterministic, offline-safe mode. No AWS/Bedrock and no OpenSearch
+  # required. This is the recommended mode for local development and CI-style
+  # algorithm/security validation.
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    environment:
+      - RETRIEVAL_BACKEND=memory
+      - SEMANTIC_CACHE_ENABLED=false
+      - SEMANTIC_CACHE_BACKEND=memory
+      - RAG_GRAPH_BACKEND=fsm
+      - BEDROCK_EMBEDDINGS_ENABLED=false
+      - BEDROCK_RERANK_ENABLED=false
+      - BEDROCK_GENERATION_ENABLED=false
+      - MODEL_ROUTING_MODE=deterministic
+    volumes:
+      - ./app:/app/app
+      - ./sample_corpus:/app/sample_corpus
+      - ./sample_requests:/app/sample_requests

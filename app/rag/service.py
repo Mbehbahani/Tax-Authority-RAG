@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .cache import SemanticCache
+from .cache import MIN_THRESHOLD, SAFE_THRESHOLD, RedisSemanticCache, SemanticCache
 from .embeddings import EmbeddingModel
 from .generation import detect_prompt_injection
 from .graph import GraphDeps, RagState, run_graph
@@ -49,7 +49,7 @@ class RagService:
         chunks: list[Chunk],
         backend: RetrievalBackend | None = None,
         embedder: Any | None = None,
-        cache: SemanticCache | None = None,
+        cache: Any | None = None,
         corpus_version: str = DEFAULT_CORPUS_VERSION,
         embedding_model_version: str = DEFAULT_EMBEDDING_MODEL_VERSION,
         reranker: Any | None = None,
@@ -69,7 +69,7 @@ class RagService:
     # -----------------------------------------------------------------
 
     @property
-    def cache(self) -> SemanticCache:
+    def cache(self) -> Any:
         return self._cache
 
     @property
@@ -206,16 +206,20 @@ def build_service_from_paths(
     answer_composer, generation_model_version = _build_answer_composer_from_env()
     backend_name = (retrieval_backend or os.getenv("RETRIEVAL_BACKEND", "memory")).lower()
     if backend_name == "opensearch":
+        # OPENSEARCH_RECREATE_INDEX=false (default in production Bedrock profile) means
+        # "skip recreating the index if it already contains documents" so the corpus
+        # embedding work is not repeated on every container restart.
+        recreate = os.getenv("OPENSEARCH_RECREATE_INDEX", "true").lower() == "true"
         backend = OpenSearchBackend(
             chunks,
             embedder=embedder,
             url=os.getenv("OPENSEARCH_URL") or None,
             index_name=os.getenv("OPENSEARCH_INDEX", DEFAULT_INDEX_NAME),
-            recreate_index=os.getenv("OPENSEARCH_RECREATE_INDEX", "true").lower() == "true",
+            recreate_index=recreate,
         )
     else:
         backend = InMemoryOpenSearchBackend(chunks, embedder=embedder)
-    cache = SemanticCache(embedder=embedder, enabled=enable_cache)
+    cache = _build_cache_from_env(embedder=embedder, enabled=enable_cache)
     service = RagService(
         chunks=chunks,
         backend=backend,
@@ -259,6 +263,27 @@ def _build_answer_composer_from_env() -> tuple[Any | None, str]:
 
     generator = BedrockCitationGenerator()
     return (lambda query, context: generator.compose(query, context)), generator.model_id
+
+
+def _build_cache_from_env(*, embedder: Any, enabled: bool) -> Any:
+    backend = os.getenv("SEMANTIC_CACHE_BACKEND", "memory").lower()
+    safe_threshold = float(os.getenv("SEMANTIC_CACHE_SAFE_THRESHOLD", str(SAFE_THRESHOLD)))
+    min_threshold = float(os.getenv("SEMANTIC_CACHE_THRESHOLD", str(MIN_THRESHOLD)))
+    if backend == "redis":
+        return RedisSemanticCache(
+            embedder=embedder,
+            redis_url=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+            safe_threshold=safe_threshold,
+            min_threshold=min_threshold,
+            ttl_seconds=int(os.getenv("SEMANTIC_CACHE_TTL_SECONDS", "3600")),
+            enabled=enabled,
+        )
+    return SemanticCache(
+        embedder=embedder,
+        safe_threshold=safe_threshold,
+        min_threshold=min_threshold,
+        enabled=enabled,
+    )
 
 
 def _citation_to_dict(citation: Any) -> dict[str, str]:

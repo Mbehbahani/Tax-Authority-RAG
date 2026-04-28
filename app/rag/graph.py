@@ -9,9 +9,10 @@ transfers to LangGraph when the Bedrock integration lands.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable, TypedDict
 
 from .embeddings import EmbeddingModel
 from .generation import (
@@ -338,6 +339,17 @@ def run_graph(
     query: str,
     deps: GraphDeps,
 ) -> RagState:
+    if os.getenv("RAG_GRAPH_BACKEND", "fsm").lower() == "langgraph":
+        return run_langgraph(user=user, query=query, deps=deps)
+    return run_fsm_graph(user=user, query=query, deps=deps)
+
+
+def run_fsm_graph(
+    *,
+    user: UserContext,
+    query: str,
+    deps: GraphDeps,
+) -> RagState:
     """Execute the deterministic CRAG state machine.
 
     Returns the final state. ``state.trace`` records every transition so tests
@@ -439,3 +451,204 @@ def run_graph(
         )
     state.trace.append("END")
     return state
+
+
+class _GraphRuntimeState(TypedDict):
+    state: RagState
+    deps: GraphDeps
+
+
+def run_langgraph(
+    *,
+    user: UserContext,
+    query: str,
+    deps: GraphDeps,
+) -> RagState:
+    """Execute the same CRAG contract through a real LangGraph ``StateGraph``.
+
+    The node functions intentionally reuse the deterministic retrieval, grading,
+    transformation, generation, and validation helpers. This gives the local
+    real-stack profile a real LangGraph runtime without changing the tested
+    safety semantics.
+    """
+
+    try:
+        from langgraph.graph import END, START, StateGraph
+    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError("langgraph package is required when RAG_GRAPH_BACKEND=langgraph") from exc
+
+    graph = StateGraph(_GraphRuntimeState)
+
+    graph.add_node("AUTH_CONTEXT", _lg_auth_context)
+    graph.add_node("CLASSIFY_QUERY", _lg_classify_query)
+    graph.add_node("DECOMPOSE_QUERY", _lg_decompose_query)
+    graph.add_node("RETRIEVE", _lg_retrieve)
+    graph.add_node("RERANK", _lg_rerank)
+    graph.add_node("GRADE_CONTEXT", _lg_grade_context)
+    graph.add_node("TRANSFORM_QUERY", _lg_transform_query)
+    graph.add_node("GENERATE_WITH_CITATIONS", _lg_generate)
+    graph.add_node("VALIDATE_CITATIONS", _lg_validate_citations)
+    graph.add_node("ABSTAIN", _lg_abstain)
+    graph.add_node("END_TRACE", _lg_end_trace)
+
+    graph.add_edge(START, "AUTH_CONTEXT")
+    graph.add_edge("AUTH_CONTEXT", "CLASSIFY_QUERY")
+    graph.add_conditional_edges(
+        "CLASSIFY_QUERY",
+        _lg_route_after_classification,
+        {"decompose": "DECOMPOSE_QUERY", "abstain": "ABSTAIN"},
+    )
+    graph.add_edge("DECOMPOSE_QUERY", "RETRIEVE")
+    graph.add_edge("RETRIEVE", "RERANK")
+    graph.add_edge("RERANK", "GRADE_CONTEXT")
+    graph.add_conditional_edges(
+        "GRADE_CONTEXT",
+        _lg_route_after_grade,
+        {"generate": "GENERATE_WITH_CITATIONS", "transform": "TRANSFORM_QUERY", "abstain": "ABSTAIN"},
+    )
+    graph.add_edge("TRANSFORM_QUERY", "RETRIEVE")
+    graph.add_edge("GENERATE_WITH_CITATIONS", "VALIDATE_CITATIONS")
+    graph.add_conditional_edges(
+        "VALIDATE_CITATIONS",
+        _lg_route_after_validation,
+        {"end": "END_TRACE", "abstain": "ABSTAIN"},
+    )
+    graph.add_edge("ABSTAIN", "END_TRACE")
+    graph.add_edge("END_TRACE", END)
+
+    compiled = graph.compile()
+    initial = RagState(user=user, query=query, original_query=query)
+    initial.trace.append("START")
+    result = compiled.invoke({"state": initial, "deps": deps})
+    return result["state"]
+
+
+def _lg_auth_context(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    payload["state"].trace.append("AUTH_CONTEXT")
+    return payload
+
+
+def _lg_classify_query(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    state.trace.append("CLASSIFY_QUERY")
+    if detect_prompt_injection(state.query):
+        state.injection_detected = True
+        state.abstention_reason = "prompt_injection_detected"
+        state.answer = GeneratedAnswer(text="", citations=[], abstained=True, abstention_reason="prompt_injection_detected")
+        state.debug["next_route"] = "abstain"
+    else:
+        state.debug["next_route"] = "decompose"
+    return payload
+
+
+def _lg_route_after_classification(payload: _GraphRuntimeState) -> str:
+    return payload["state"].debug.get("next_route", "decompose")
+
+
+def _lg_decompose_query(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    sub_queries = decompose_query(state.query)
+    if len(sub_queries) > 1:
+        state.decomposed_queries = sub_queries
+        state.trace.append("DECOMPOSE_QUERY")
+    return payload
+
+
+def _lg_retrieve(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    state.trace.append("RETRIEVE")
+    _retrieve(state, payload["deps"])
+    return payload
+
+
+def _lg_rerank(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    payload["state"].trace.append("RERANK")
+    return payload
+
+
+def _lg_grade_context(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    deps = payload["deps"]
+    state.trace.append("GRADE_CONTEXT")
+    state.grader = deps.grader(state.query, state.reranked_chunks, state.user)
+
+    label = state.grader.label
+    if label == "Relevant" and state.reranked_chunks:
+        state.debug["next_route"] = "generate"
+        return payload
+
+    if label == "Ambiguous" and state.attempts < MAX_RETRIEVAL_ATTEMPTS:
+        if state.hyde_used < MAX_HYDE_ATTEMPTS:
+            state.debug["pending_transform"] = "HYDE_QUERY"
+            state.debug["next_route"] = "transform"
+            return payload
+        state.abstention_reason = "ambiguous_evidence_after_correction"
+
+    elif label == "Irrelevant" and state.attempts < MAX_RETRIEVAL_ATTEMPTS:
+        if state.rewrites_used < MAX_QUERY_REWRITES:
+            state.debug["pending_transform"] = "REWRITE_QUERY"
+            state.debug["next_route"] = "transform"
+            return payload
+        if state.hyde_used < MAX_HYDE_ATTEMPTS:
+            state.debug["pending_transform"] = "HYDE_QUERY"
+            state.debug["next_route"] = "transform"
+            return payload
+        state.abstention_reason = "irrelevant_after_corrections"
+
+    state.abstention_reason = state.abstention_reason or "retry_budget_exhausted"
+    state.debug["next_route"] = "abstain"
+    return payload
+
+
+def _lg_route_after_grade(payload: _GraphRuntimeState) -> str:
+    return payload["state"].debug.get("next_route", "abstain")
+
+
+def _lg_transform_query(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    transform = state.debug.pop("pending_transform", "")
+    if transform == "REWRITE_QUERY":
+        state.query = rewrite_query(state.query)
+        state.rewrites_used += 1
+        state.trace.append("REWRITE_QUERY")
+    elif transform == "HYDE_QUERY":
+        state.query = hyde_expand(state.query)
+        state.hyde_used += 1
+        state.trace.append("HYDE_QUERY")
+    return payload
+
+
+def _lg_generate(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    state.trace.append("GENERATE_WITH_CITATIONS")
+    _generate(state, payload["deps"])
+    return payload
+
+
+def _lg_validate_citations(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    state.trace.append("VALIDATE_CITATIONS")
+    state.debug["validation_route"] = "end" if _validate_citations(state) == "END" else "abstain"
+    return payload
+
+
+def _lg_route_after_validation(payload: _GraphRuntimeState) -> str:
+    return payload["state"].debug.get("validation_route", "abstain")
+
+
+def _lg_abstain(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    state = payload["state"]
+    state.trace.append("ABSTAIN")
+    state.answer = GeneratedAnswer(
+        text="",
+        citations=[],
+        abstained=True,
+        abstention_reason=state.abstention_reason or "grader_not_relevant",
+    )
+    state.citations = []
+    return payload
+
+
+def _lg_end_trace(payload: _GraphRuntimeState) -> _GraphRuntimeState:
+    payload["state"].trace.append("END")
+    return payload

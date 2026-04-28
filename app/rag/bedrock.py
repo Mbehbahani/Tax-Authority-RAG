@@ -214,6 +214,9 @@ class BedrockReranker:
         self.model_id = model_id
         self.top_n = top_n
 
+    def __call__(self, query: str, candidates: list[FusionResult]) -> list[FusionResult]:
+        return self.rerank(query, candidates)
+
     def rerank(self, query: str, candidates: list[FusionResult]) -> list[FusionResult]:
         if not candidates:
             return []
@@ -287,6 +290,9 @@ class BedrockCitationGenerator:
         self.model_id = resolve_runtime_model_id(model_id)
         self.max_tokens = max_tokens
         self.temperature = temperature
+
+    def __call__(self, query: str, authorized_context: list[Chunk]) -> GeneratedAnswer:
+        return self.compose(query, authorized_context)
 
     def compose(self, query: str, authorized_context: list[Chunk], *, max_claims: int = 4) -> GeneratedAnswer:
         deterministic = compose_answer(query, authorized_context, max_claims=max_claims)
@@ -373,19 +379,43 @@ def parse_claude_citation_response(payload: dict[str, Any], authorized_context: 
     return GeneratedAnswer(text="\n".join(claims), citations=citations, abstained=False)
 
 
-def _invoke_json(client: BedrockRuntimeLike, *, model_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    response = client.invoke_model(
-        modelId=model_id,
-        body=json.dumps(body),
-        contentType="application/json",
-        accept="application/json",
-    )
-    raw_body = response.get("body", b"{}")
-    if hasattr(raw_body, "read"):
-        raw_body = raw_body.read()
-    if isinstance(raw_body, bytes):
-        raw_body = raw_body.decode("utf-8")
-    return json.loads(raw_body)
+def _invoke_json(
+    client: BedrockRuntimeLike,
+    *,
+    model_id: str,
+    body: dict[str, Any],
+    max_retries: int = 5,
+) -> dict[str, Any]:
+    """Invoke a Bedrock model with exponential backoff on ThrottlingException."""
+    import time
+
+    delay = 1.0
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            response = client.invoke_model(
+                modelId=model_id,
+                body=json.dumps(body),
+                contentType="application/json",
+                accept="application/json",
+            )
+            raw_body = response.get("body", b"{}")
+            if hasattr(raw_body, "read"):
+                raw_body = raw_body.read()
+            if isinstance(raw_body, bytes):
+                raw_body = raw_body.decode("utf-8")
+            return json.loads(raw_body)
+        except Exception as exc:
+            exc_name = type(exc).__name__
+            # Retry on throttling or transient service errors
+            if "ThrottlingException" in exc_name or "ServiceUnavailable" in exc_name or "Throttling" in str(exc):
+                last_exc = exc
+                if attempt < max_retries - 1:
+                    time.sleep(delay)
+                    delay = min(delay * 2, 30.0)  # cap at 30 seconds
+                    continue
+            raise
+    raise last_exc  # type: ignore[misc]
 
 
 def _extract_claude_text(payload: dict[str, Any]) -> str:

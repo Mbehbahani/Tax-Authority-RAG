@@ -127,13 +127,18 @@ def test_auth_filter_exposes_denied_tags_for_non_fiod_roles(users):
 def test_rbac_filter_shapes_match_opensearch_contract(users):
     hf = build_auth_filter(users["u_helpdesk_01"])
     body = hf.to_opensearch_filter()
-    assert body["bool"]["filter"][0] == {"term": {"allowed_roles": "helpdesk"}}
+    assert body["bool"]["filter"][0] == {"terms": {"allowed_roles": ["helpdesk"]}}
     ranges = [f for f in body["bool"]["filter"] if "range" in f]
     assert ranges[0]["range"]["classification_level"]["lte"] == 2
     must_not_terms = {
         list(f["term"].values())[0] for f in body["bool"].get("must_not", [])
     }
     assert {"FIOD", "fraud_investigation"}.issubset(must_not_terms)
+
+
+def test_fiod_effective_roles_include_lower_level_public_roles(users):
+    hf = build_auth_filter(users["u_fiod_01"])
+    assert hf.effective_roles == ("fiod_investigator", "tax_inspector", "helpdesk")
 
 
 def test_rbac_llm_scenarios_fixture_uses_expected_users():

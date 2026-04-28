@@ -1,6 +1,6 @@
 # Stage 1 Implementation Report Template
 
-Claude Code should create [`docs/STAGE_1_IMPLEMENTATION_REPORT.md`](STAGE_1_IMPLEMENTATION_REPORT.md) after completing Stage 1.
+Claude Code should create [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](reports/STAGE_1_IMPLEMENTATION_REPORT.md) after completing Stage 1.
 
 ## 1. Executive Summary
 
@@ -67,4 +67,5 @@ List limitations, risks, and incomplete items.
 ## 10. Recommended Next Steps
 
 State what should happen before final assessment writing and before any deployment.
+
 

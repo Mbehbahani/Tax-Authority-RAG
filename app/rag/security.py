@@ -17,6 +17,14 @@ from .models import Chunk, UserContext
 audit_logger = logging.getLogger("tax_rag.audit")
 
 
+_ROLE_INHERITANCE: dict[str, tuple[str, ...]] = {
+    "helpdesk": ("helpdesk",),
+    "tax_inspector": ("tax_inspector", "helpdesk"),
+    "legal_counsel": ("legal_counsel", "tax_inspector", "helpdesk"),
+    "fiod_investigator": ("fiod_investigator", "tax_inspector", "helpdesk"),
+}
+
+
 @dataclass(frozen=True)
 class AuthFilter:
     """Concrete filter values used to build both an OpenSearch query and the
@@ -25,6 +33,7 @@ class AuthFilter:
     """
 
     role: str
+    effective_roles: tuple[str, ...]
     clearance: int
     need_to_know_groups: tuple[str, ...]
     denied_classification_tags: tuple[str, ...]
@@ -33,7 +42,7 @@ class AuthFilter:
         return {
             "bool": {
                 "filter": [
-                    {"term": {"allowed_roles": self.role}},
+                    {"terms": {"allowed_roles": list(self.effective_roles)}},
                     {"range": {"classification_level": {"lte": self.clearance}}},
                 ],
                 "must_not": [
@@ -50,6 +59,7 @@ class AuthFilter:
 
         payload = {
             "role": self.role,
+            "effective_roles": sorted(self.effective_roles),
             "clearance": self.clearance,
             "ntk": sorted(self.need_to_know_groups),
             "denied": sorted(self.denied_classification_tags),
@@ -68,8 +78,10 @@ def build_auth_filter(user: UserContext) -> AuthFilter:
         denied = ()
     else:
         denied = _RESTRICTED_TAGS_FOR_NON_FIOD
+    effective_roles = _ROLE_INHERITANCE.get(user.role, (user.role,))
     return AuthFilter(
         role=user.role,
+        effective_roles=effective_roles,
         clearance=user.clearance,
         need_to_know_groups=tuple(user.need_to_know_groups),
         denied_classification_tags=denied,
@@ -80,7 +92,7 @@ def is_authorized(chunk: Chunk, user: UserContext, *, auth: AuthFilter | None = 
     """Single source of truth for RBAC decisions.
 
     Rules (applied before scoring, reranking, prompt, and cache lookup):
-      1. chunk.allowed_roles must contain user.role.
+      1. chunk.allowed_roles must intersect the user's effective roles.
       2. chunk.classification_level must be <= user.clearance.
       3. chunks with FIOD/fraud_investigation tags are denied for all non-FIOD
          roles, regardless of clearance.
@@ -88,7 +100,7 @@ def is_authorized(chunk: Chunk, user: UserContext, *, auth: AuthFilter | None = 
     """
 
     auth = auth or build_auth_filter(user)
-    if user.role not in chunk.allowed_roles:
+    if not set(chunk.allowed_roles).intersection(auth.effective_roles):
         return False
     if chunk.classification_level > user.clearance:
         return False

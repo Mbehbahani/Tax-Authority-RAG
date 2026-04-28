@@ -13,10 +13,97 @@ services:
     depends_on:
       - redis
 
+  # ── Real local stack (OpenSearch + Redis + LangGraph, local embeddings) ──
+  # docker compose -f docker-compose.test.yml --profile realstack up --build api-real
+  api-real:
+    build: .
+    profiles: ["realstack"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env.example
+    environment:
+      - RETRIEVAL_BACKEND=opensearch
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=tax-rag-chunks-v1-realstack
+      - OPENSEARCH_RECREATE_INDEX=true
+      - SEMANTIC_CACHE_ENABLED=true
+      - SEMANTIC_CACHE_BACKEND=redis
+      - REDIS_URL=redis://redis:6379/0
+      - RAG_GRAPH_BACKEND=langgraph
+    volumes:
+      - ./app:/app/app
+      - ./sample_corpus:/app/sample_corpus
+      - ./sample_requests:/app/sample_requests
+    depends_on:
+      - redis
+      - opensearch
+
+  # ── Full Bedrock real stack ───────────────────────────────────────────────
+  # Uses real Bedrock APIs (embeddings, rerank, generation), real OpenSearch,
+  # real Redis cache, LangGraph orchestration.
+  #
+  # Prerequisites:
+  #   1. AWS credentials in ~/.aws (default profile) — mounted read-only below
+  #   2. Bedrock model access enabled in your AWS account (eu-central-1)
+  #
+  # Start with:
+  #   docker compose -f docker-compose.test.yml --profile bedrock up --build api-bedrock
+  #
+  # The index is built ONCE on first boot (OPENSEARCH_RECREATE_INDEX=true).
+  # On subsequent restarts change OPENSEARCH_RECREATE_INDEX to false to skip re-embedding.
+  api-bedrock:
+    build: .
+    profiles: ["bedrock"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8002:8000"
+    env_file:
+      - .env.example
+    environment:
+      # ── Retrieval ──────────────────────────────────────────────────
+      - RETRIEVAL_BACKEND=opensearch
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=tax-rag-chunks-v1-bedrock
+      # Set to false after first boot to skip re-embedding on restart:
+      - OPENSEARCH_RECREATE_INDEX=true
+      # ── Bedrock feature flags ──────────────────────────────────────
+      - BEDROCK_EMBEDDINGS_ENABLED=true
+      - BEDROCK_RERANK_ENABLED=true
+      - BEDROCK_GENERATION_ENABLED=true
+      # ── Cache ──────────────────────────────────────────────────────
+      - SEMANTIC_CACHE_ENABLED=true
+      - SEMANTIC_CACHE_BACKEND=redis
+      - REDIS_URL=redis://redis:6379/0
+      # ── Orchestration ─────────────────────────────────────────────
+      - RAG_GRAPH_BACKEND=langgraph
+      # ── AWS — use the "default" profile from the mounted ~/.aws ────
+      - AWS_PROFILE=default
+      - AWS_REGION=eu-central-1
+      - BEDROCK_REGION=eu-central-1
+      # ── Override generation model to the active Haiku model ────────
+      - BEDROCK_GENERATION_MODEL_ID=eu.anthropic.claude-haiku-4-5-20251001-v1:0
+    volumes:
+      - ./app:/app/app
+      - ./sample_corpus:/app/sample_corpus
+      - ./sample_requests:/app/sample_requests
+      # Mount host AWS credentials directory read-only into the container.
+      # On Windows: C:\Users\<you>\.aws  →  /root/.aws inside the container.
+      - ${USERPROFILE}/.aws:/root/.aws:ro
+    depends_on:
+      - redis
+      - opensearch
+
   redis:
     image: redis:7-alpine
+    # Expose Redis on 16379 for optional host-side real-stack tests while the API
+    # container still reaches it through redis://redis:6379 internally.
     ports:
-      - "6379:6379"
+      - "16379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
 
   # Optional OpenSearch profile. Start with:
   #   docker compose -f docker-compose.test.yml --profile opensearch up
@@ -24,7 +111,7 @@ services:
   # and the API will keep using the in-memory OpenSearch-compatible fake.
   opensearch:
     image: opensearchproject/opensearch:2.17.1
-    profiles: ["opensearch"]
+    profiles: ["opensearch", "realstack", "bedrock"]
     environment:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
@@ -39,3 +126,4 @@ services:
 
 volumes:
   opensearch-data:
+  redis-data:

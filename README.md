@@ -11,7 +11,19 @@
   <img src="https://img.shields.io/badge/search-hybrid%20BM25%20%2B%20vector-6F42C1" alt="Hybrid Search">
 </p>
 
-This repository is a polished interview assignment for designing a **zero-hallucination, citation-grounded, role-secure Enterprise RAG system** over legislation, case law, internal policy, and training content at Tax Authority scale.
+This repository presents a **working assessment implementation and architecture package** for a secure Enterprise RAG assistant serving a National Tax Authority use case. It focuses on **citation-grounded answers, RBAC-before-retrieval, hybrid retrieval quality, and production-oriented evaluation discipline** across legislation, case law, internal policy, and training content.
+
+It is designed to show both:
+
+- **engineering judgment** — clear architectural tradeoffs, bounded complexity, and security-first design
+- **execution ability** — implemented code, tests, evaluation assets, live Bedrock validation, and reproducible documentation
+
+## What an engineering reviewer should notice quickly
+
+- The system is **not a generic chatbot wrapper**; it is a constrained legal/fiscal RAG design with explicit safety guarantees.
+- The repository contains both **deterministic local validation** and a **real Bedrock-backed runtime path**.
+- The documentation separates **what is already proven** from **what remains a production next step**, which is usually a sign of strong engineering maturity.
+- The final submission is organized so a reviewer can move from **executive summary -> architecture -> evidence -> detailed reports** without getting lost.
 
 ## Why this design stands out
 
@@ -55,6 +67,28 @@ flowchart LR
 - **Live retrieval/rerank checks:** `2 passed`
 - **Targeted production gate:** `TTFT p95 < 1.5s`
 
+## Assessment positioning
+
+This repository should be read as an **implementation-ready assessment submission**, not only as a slide-deck architecture answer.
+
+What is already demonstrated:
+
+- working FastAPI application and RAG modules
+- legal-aware ingestion and metadata preservation
+- hybrid OpenSearch-style retrieval design
+- RBAC-before-retrieval enforcement
+- CRAG-style bounded orchestration
+- citation validation and abstention behavior
+- formal tests across unit, integration, security, evaluation, and performance smoke scenarios
+- real Bedrock/OpenSearch/Redis/LangGraph validation path
+
+What is intentionally not overstated:
+
+- this is **not yet a full production deployment over a 500,000-document / 20M+ chunk corpus**
+- some production-scale benchmarking, managed infrastructure rollout, and full judge-based evaluation remain next steps
+
+That balance is important in senior engineering review: the project aims to be **credible, concrete, and honest**.
+
 ## Quick start
 
 ```bash
@@ -73,11 +107,68 @@ docker compose -f docker-compose.test.yml up --build
 
 ## Best entry points
 
+- **Final consolidated report:** [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
 - **Final answer:** [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
 - **Architecture plan:** [`docs/ARCHITECTURE_PLAN.md`](docs/ARCHITECTURE_PLAN.md)
-- **Assignment fit:** [`docs/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/ASSIGNMENT_ALIGNMENT_REPORT.md)
-- **Evaluation & metrics:** [`docs/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](docs/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
-- **Local PoC report:** [`docs/STAGE_1_IMPLEMENTATION_REPORT.md`](docs/STAGE_1_IMPLEMENTATION_REPORT.md)
+- **Assignment fit:** [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
+- **Evaluation & metrics:** [`docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
+- **Local PoC report:** [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md)
+
+### Recommended reviewer reading order
+
+1. [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
+2. [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
+3. [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
+4. Stage reports in `docs/reports/`
+
+## Live System Evidence
+
+The project includes a validated real Bedrock stack running locally via Docker with:
+
+- **OpenSearch** (real hybrid BM25 + vector retrieval)
+- **Redis** (real semantic cache)
+- **LangGraph** (real CRAG state machine)
+- **Bedrock Cohere Embed v4** (`eu.cohere.embed-v4:0`)
+- **Bedrock Cohere Rerank 3.5** (`cohere.rerank-v3-5:0`)
+- **Bedrock Claude Haiku 4.5** (`eu.anthropic.claude-haiku-4-5-20251001-v1:0`)
+
+The system demonstrates:
+
+- ✅ **Citation-complete answers** with document name, article, and paragraph
+- ✅ **RBAC enforcement** before retrieval (helpdesk cannot access FIOD content)
+- ✅ **CRAG state machine** with bounded retries and safe abstention
+- ✅ **Real-time validation** against expected behaviors
+- ✅ **Authorization-scoped semantic cache** with `0.95` similarity threshold
+
+### Running the Real Bedrock Stack
+
+```bash
+# Requires AWS credentials with Bedrock access in eu-central-1
+docker compose -f docker-compose.test.yml --profile bedrock up --build api-bedrock -d
+```
+
+Then open **`http://localhost:8002/`** to interact with the live system.
+
+The web UI shows:
+- Active stack components (OpenSearch, Redis, LangGraph, Bedrock models)
+- Sample queries with expected behaviors
+- Real-time CRAG trace visualization
+- Citation validation and RBAC leakage checks
+
+## Why this README is intentionally structured this way
+
+For hiring teams and senior engineers, the key question is usually not only
+“Is the architecture good?” but also:
+
+- Can this candidate make strong technical choices under constraints?
+- Can they separate PoC evidence from production claims?
+- Can they communicate clearly to engineers, reviewers, and stakeholders?
+
+This README therefore prioritizes:
+
+1. **fast comprehension** of the system’s strengths,
+2. **direct links to evidence**, and
+3. **honest scope boundaries**.
 
 ## Repository map
 
