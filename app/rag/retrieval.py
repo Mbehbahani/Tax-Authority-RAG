@@ -219,6 +219,11 @@ class InMemoryOpenSearchBackend:
 class OpenSearchBackend:
     """Real OpenSearch retrieval backend for local Docker compatibility tests."""
 
+    def _ensure_chunk_embeddings(self, chunks: list[Chunk]) -> None:
+        for chunk in chunks:
+            if not chunk.embedding:
+                chunk.embedding = self._embedder.embed(_embedding_text(chunk))
+
     def __init__(
         self,
         chunks: list[Chunk],
@@ -245,7 +250,21 @@ class OpenSearchBackend:
         self.wait_until_ready(timeout_seconds=timeout_seconds)
         if recreate_index and self._client.indices.exists(index=self._index_name):
             self._client.indices.delete(index=self._index_name)
-        if not self._client.indices.exists(index=self._index_name):
+
+        index_exists = self._client.indices.exists(index=self._index_name)
+        if index_exists and self._index_has_documents():
+            # Smart startup path: if the persistent OpenSearch volume already
+            # contains the indexed corpus, do not re-embed documents. This avoids
+            # unnecessary Bedrock embedding cost and startup latency on rebuilds
+            # or restarts. Query-time embeddings are still computed normally.
+            return
+
+        # For live Bedrock embeddings, the final vector dimension may differ from
+        # the adapter's default. Compute embeddings only when we actually need to
+        # create/fill the index so the OpenSearch mapping uses the real dimension.
+        self._ensure_chunk_embeddings(self._chunks)
+
+        if not index_exists:
             self._client.indices.create(
                 index=self._index_name,
                 body=build_index_mapping(dimension=self._embedder.dimension),
@@ -263,6 +282,13 @@ class OpenSearchBackend:
     @property
     def index_name(self) -> str:
         return self._index_name
+
+    def _index_has_documents(self) -> bool:
+        try:
+            result = self._client.count(index=self._index_name)
+            return int(result.get("count", 0)) > 0
+        except Exception:
+            return False
 
     def _build_client(self, *, url: str | None, timeout_seconds: int):
         if url:
@@ -297,10 +323,9 @@ class OpenSearchBackend:
         raise RuntimeError(f"OpenSearch not reachable for index {self._index_name}: {last_error}")
 
     def index_chunks(self, chunks: list[Chunk]) -> None:
+        self._ensure_chunk_embeddings(chunks)
         actions = []
         for chunk in chunks:
-            if not chunk.embedding:
-                chunk.embedding = self._embedder.embed(_embedding_text(chunk))
             actions.append(
                 {
                     "_op_type": "index",
@@ -458,7 +483,7 @@ def hybrid_retrieve(
     final_top_n: int = DEFAULT_FINAL_TOP_N,
     reranker: Any | None = None,
 ) -> tuple[list[Chunk], dict[str, Any]]:
-    query_embedding = embedder.embed(query)
+    query_embedding = embedder.embed_query(query) if hasattr(embedder, "embed_query") else embedder.embed(query)
     lexical_hits = backend.lexical_search(query, user, top_k=lexical_top_k)
     vector_hits = backend.vector_search(query_embedding, user, top_k=vector_top_k)
     fused = reciprocal_rank_fusion([lexical_hits, vector_hits])

@@ -23,6 +23,36 @@
       "effective_to": "2022-12-31"
     },
     {
+      "document_id": "DOC-LEG-2023-001",
+      "document_name": "Synthetic Income Tax Act 2023 Transitional Version",
+      "source_type": "legislation",
+      "path": "sample_corpus/legislation/income_tax_act_2023_transition.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"],
+      "effective_from": "2023-01-01",
+      "effective_to": "2023-12-31"
+    },
+    {
+      "document_id": "DOC-REG-001",
+      "document_name": "Synthetic Tax Records Retention Regulation 2024",
+      "source_type": "legislation",
+      "path": "sample_corpus/legislation/records_retention_regulation_2024.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"],
+      "effective_from": "2024-01-01",
+      "effective_to": null
+    },
+    {
+      "document_id": "DOC-LEG-2025-DRAFT",
+      "document_name": "Synthetic Income Tax Act 2025 Draft Amendment",
+      "source_type": "legislation",
+      "path": "sample_corpus/legislation/income_tax_act_2025_draft.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"],
+      "effective_from": "2025-01-01",
+      "effective_to": null
+    },
+    {
       "document_id": "DOC-CASE-001",
       "document_name": "Synthetic Supreme Court Home Office Ruling",
       "source_type": "case_law",
@@ -32,12 +62,63 @@
       "ecli": "ECLI:NL:HR:2023:123"
     },
     {
+      "document_id": "DOC-CASE-002",
+      "document_name": "Synthetic Court Ruling Allowing Home Office Deduction",
+      "source_type": "case_law",
+      "path": "sample_corpus/case_law/court_supporting_home_office_2024.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"],
+      "ecli": "ECLI:NL:RBAMS:2024:456"
+    },
+    {
+      "document_id": "DOC-CASE-003",
+      "document_name": "Synthetic Court Ruling on Mixed Home Office Use",
+      "source_type": "case_law",
+      "path": "sample_corpus/case_law/court_mixed_use_denial_2022.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"],
+      "ecli": "ECLI:NL:GHSHE:2022:789"
+    },
+    {
+      "document_id": "DOC-CASE-004",
+      "document_name": "Synthetic Supreme Court Records Estimation Ruling",
+      "source_type": "case_law",
+      "path": "sample_corpus/case_law/supreme_court_records_estimation_2021.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"],
+      "ecli": "ECLI:NL:HR:2021:321"
+    },
+    {
       "document_id": "DOC-POL-001",
       "document_name": "Synthetic Helpdesk Home Office Guideline",
       "source_type": "internal_policy",
       "path": "sample_corpus/policies/helpdesk_home_office_guideline.md",
       "classification_level": 1,
       "allowed_roles": ["helpdesk", "tax_inspector"]
+    },
+    {
+      "document_id": "DOC-POL-002",
+      "document_name": "Synthetic Inspector Home Office Audit Manual",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/inspector_home_office_audit_manual.md",
+      "classification_level": 2,
+      "allowed_roles": ["tax_inspector", "legal_counsel"]
+    },
+    {
+      "document_id": "DOC-POL-003",
+      "document_name": "Synthetic Legal Interpretation Memo on Home Office Deduction",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/legal_home_office_interpretation_memo.md",
+      "classification_level": 3,
+      "allowed_roles": ["legal_counsel"]
+    },
+    {
+      "document_id": "DOC-POL-004",
+      "document_name": "Synthetic Public Box 1 Rates Guideline 2024",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/public_box1_rates_guideline.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"]
     },
     {
       "document_id": "DOC-FIOD-001",
@@ -49,13 +130,39 @@
       "case_scope": "FIOD-2024-001"
     },
     {
+      "document_id": "DOC-FIOD-002",
+      "document_name": "Synthetic FIOD Operational Note 2024",
+      "source_type": "internal_policy",
+      "path": "sample_corpus/policies/fiod_operational_note_2024.md",
+      "classification_level": 5,
+      "allowed_roles": ["fiod_investigator"],
+      "case_scope": "FIOD-2024-001"
+    },
+    {
       "document_id": "DOC-ELRN-001",
       "document_name": "Synthetic Home Office Deduction Training",
       "source_type": "elearning",
       "path": "sample_corpus/elearning/home_office_deduction_training.md",
       "classification_level": 1,
       "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"]
+    },
+    {
+      "document_id": "DOC-ELRN-002",
+      "document_name": "Synthetic Evidence and Recordkeeping Training",
+      "source_type": "elearning",
+      "path": "sample_corpus/elearning/evidence_recordkeeping_training.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"]
+    },
+    {
+      "document_id": "DOC-ELRN-003",
+      "document_name": "Synthetic Security and Escalation Training",
+      "source_type": "elearning",
+      "path": "sample_corpus/elearning/security_and_escalation_training.md",
+      "classification_level": 1,
+      "allowed_roles": ["helpdesk", "tax_inspector", "legal_counsel"]
     }
   ]
 }
+
 

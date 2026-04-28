@@ -35,7 +35,81 @@
       "user_id": "u_helpdesk_01",
       "query": "What is the Box 1 tax rate for 2024?",
       "purpose": "Semantic cache safety and insufficient-context abstention unless source exists."
+    },
+    {
+      "id": "Q_RECORD_RETENTION_HELPDESK",
+      "user_id": "u_helpdesk_01",
+      "query": "How long must a taxpayer keep records for a home office deduction?",
+      "purpose": "Retention-rule retrieval from legislation/regulation for helpdesk-safe answers."
+    },
+    {
+      "id": "Q_DIGITAL_RECORDS_HELPDESK",
+      "user_id": "u_helpdesk_01",
+      "query": "Are digital invoices acceptable for home office deduction support?",
+      "purpose": "Digital-record evidence query."
+    },
+    {
+      "id": "Q_TRANSITION_2023_HELPDESK",
+      "user_id": "u_helpdesk_01",
+      "query": "What home office rule applied in tax year 2023?",
+      "purpose": "Transition-year legislation retrieval."
+    },
+    {
+      "id": "Q_DRAFT_2025_HELPDESK",
+      "user_id": "u_helpdesk_01",
+      "query": "What does the 2025 draft say about home office deduction?",
+      "purpose": "Helpdesk should not present draft law as binding."
+    },
+    {
+      "id": "Q_DRAFT_2025_LEGAL",
+      "user_id": "u_legal_01",
+      "query": "Summarize the 2025 draft amendment on home office deduction.",
+      "purpose": "Legal-counsel access to draft legal material."
+    },
+    {
+      "id": "Q_ECLI_ALLOWED_2024",
+      "user_id": "u_inspector_01",
+      "query": "Ruling ECLI:NL:RBAMS:2024:456",
+      "purpose": "Exact case retrieval for an allowed-deduction ruling."
+    },
+    {
+      "id": "Q_ECLI_MIXED_USE_2022",
+      "user_id": "u_legal_01",
+      "query": "Ruling ECLI:NL:GHSHE:2022:789",
+      "purpose": "Exact case retrieval for mixed-use denial."
+    },
+    {
+      "id": "Q_ECLI_RECORDS_2021",
+      "user_id": "u_inspector_01",
+      "query": "Ruling ECLI:NL:HR:2021:321",
+      "purpose": "Exact case retrieval for records-estimation denial."
+    },
+    {
+      "id": "Q_INSPECTOR_AUDIT_MANUAL",
+      "user_id": "u_inspector_01",
+      "query": "What should an inspector verify in a home office audit?",
+      "purpose": "Inspector policy/manual retrieval."
+    },
+    {
+      "id": "Q_LEGAL_MEMO_VERSION_CONFLICT",
+      "user_id": "u_legal_01",
+      "query": "How should legal counsel answer if no transition rule is retrieved for a target year?",
+      "purpose": "Legal memo retrieval on abstention/version conflict."
+    },
+    {
+      "id": "Q_SECURITY_ESCALATION_HELPDESK",
+      "user_id": "u_helpdesk_01",
+      "query": "What should helpdesk do if a caller asks about FIOD investigation material?",
+      "purpose": "Security/escalation training retrieval."
+    },
+    {
+      "id": "Q_FIOD_ALLOWED_INVESTIGATOR",
+      "user_id": "u_fiod_01",
+      "query": "What does the FIOD operational note say about disclosure restrictions?",
+      "purpose": "Authorized FIOD retrieval for the investigator role."
     }
   ]
 }
+
+
 

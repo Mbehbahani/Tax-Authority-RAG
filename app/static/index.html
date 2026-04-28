@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tax Authority AI Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:       #0d2b4e;
+      --navy-light: #1a3f6f;
+      --gold:       #c9a84c;
+      --gold-light: #f0d080;
+      --bg:         #f0f2f5;
+      --white:      #ffffff;
+      --text:       #1a1a2e;
+      --muted:      #6b7280;
+      --border:     #d1d5db;
+      --green:      #16a34a;
+      --red:        #dc2626;
+      --amber:      #d97706;
+      --blue:       #2563eb;
+      --purple:     #7c3aed;
+      --teal:       #0d9488;
+      --radius:     10px;
+      --shadow:     0 2px 8px rgba(0,0,0,0.10);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    header .logo { font-size: 20px; }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.3px; }
+    header .subtitle {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--gold-light);
+      opacity: 0.85;
+    }
+    .help-menu-wrap {
+      position: relative;
+      margin-left: 10px;
+    }
+    .help-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: var(--gold-light);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .help-btn:hover { background: rgba(255,255,255,0.16); }
+    .help-panel {
+      position: absolute;
+      top: 36px;
+      right: 0;
+      width: 340px;
+      max-width: min(340px, calc(100vw - 24px));
+      background: var(--white);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      padding: 12px 13px;
+      z-index: 50;
+      display: none;
+    }
+    .help-panel.open { display: block; }
+    .help-panel h3 {
+      font-size: 12px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .help-panel .help-section { margin-bottom: 10px; }
+    .help-panel .help-section:last-child { margin-bottom: 0; }
+    .help-panel .help-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+    .help-panel ul {
+      margin-left: 16px;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .help-panel li { margin-bottom: 3px; }
+    .help-inline-code {
+      font-family: Consolas, monospace;
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-size: 10px;
+    }
+
+    /* ── Runtime Tool Chain Banner ── */
+    #runtime-banner {
+      background: #0f172a;
+      color: #94a3b8;
+      padding: 6px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      font-size: 11px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #1e293b;
+      min-height: 32px;
+    }
+    #runtime-banner .banner-label {
+      font-weight: 700;
+      color: var(--gold-light);
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+    .tool-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tool-pill.real  { background: #14532d; color: #86efac; border: 1px solid #166534; }
+    .tool-pill.fake  { background: #292524; color: #a8a29e; border: 1px solid #44403c; }
+    .tool-pill.bedrock { background: #1e1b4b; color: #c4b5fd; border: 1px solid #4338ca; }
+    .tool-pill.disabled { background: #1c1917; color: #78716c; border: 1px solid #292524; }
+
+    /* ── User Bar ── */
+    .user-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .user-bar label { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .user-bar select {
+      font-size: 13px;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      background: var(--white);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      min-width: 260px;
+    }
+    .user-bar select:focus { border-color: var(--navy); }
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: var(--navy);
+      color: var(--gold-light);
+    }
+    .clearance-badge { font-size: 11px; color: var(--muted); }
+
+    /* ── Main layout: sidebar + chat ── */
+    .main-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    /* ── Sample Queries Sidebar ── */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 12px 14px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .sample-query-item {
+      padding: 9px 14px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.12s;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .sample-query-item:hover {
+      background: #f8fafc;
+      border-left-color: var(--navy);
+    }
+    .sample-query-item.active {
+      background: #eff6ff;
+      border-left-color: var(--blue);
+    }
+    .sample-query-item .sq-query {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 3px;
+    }
+    .sample-query-item .sq-user {
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .sample-query-item .sq-purpose {
+      font-size: 10px;
+      color: var(--blue);
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    /* ── Chat Area ── */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+    .welcome {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--muted);
+    }
+    .welcome .icon { font-size: 40px; margin-bottom: 8px; }
+    .welcome h2 { font-size: 16px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
+    .welcome p { font-size: 13px; }
+
+    /* ── Question bubble ── */
+    .msg-question { display: flex; justify-content: flex-end; }
+    .msg-question .bubble {
+      background: var(--navy);
+      color: var(--white);
+      padding: 10px 14px;
+      border-radius: var(--radius) var(--radius) 4px var(--radius);
+      max-width: 65%;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Answer card ── */
+    .msg-answer { display: flex; justify-content: flex-start; }
+    .answer-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius) var(--radius) var(--radius) 4px;
+      padding: 14px;
+      max-width: 85%;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .answer-card.abstained {
+      border-left: 4px solid var(--amber);
+      background: #fffbf0;
+    }
+
+    /* Badges */
+    .answer-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 12px;
+    }
+    .badge-relevant   { background: #dcfce7; color: var(--green); }
+    .badge-ambiguous  { background: #fef3c7; color: var(--amber); }
+    .badge-irrelevant { background: #fee2e2; color: var(--red); }
+    .badge-abstained  { background: #fef3c7; color: var(--amber); }
+    .badge-cache      { background: #dbeafe; color: var(--blue); }
+    .badge-latency    { background: #f3f4f6; color: var(--muted); }
+
+    /* Answer text */
+    .answer-text {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .abstained-msg { font-size: 13px; color: var(--amber); font-weight: 600; }
+    .abstained-reason { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Citations */
+    .citations-section { border-top: 1px solid var(--border); padding-top: 8px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .citation-list { display: flex; flex-direction: column; gap: 5px; }
+    .citation-item {
+      font-size: 11px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 5px;
+      padding: 5px 8px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .citation-item strong { color: var(--navy); }
+
+    /* Trace */
+    .trace-section { border-top: 1px solid var(--border); padding-top: 8px; }
+    .trace-steps { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+    .trace-step {
+      font-size: 10px;
+      font-family: monospace;
+      background: #f3f4f6;
+      color: var(--navy);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .trace-step.highlight { background: var(--navy); color: var(--gold-light); }
+    .trace-arrow { font-size: 9px; color: var(--muted); }
+
+    /* ── Expected Behavior Card ── */
+    .expected-card {
+      border: 1px solid #c7d2fe;
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      background: #f5f3ff;
+      padding: 10px 12px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .expected-card .exp-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 2px;
+    }
+    .expected-card .exp-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .expected-card .exp-label {
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+      min-width: 110px;
+    }
+    .exp-doc { font-family: monospace; font-size: 10px; background: #e0e7ff; color: var(--purple); padding: 1px 5px; border-radius: 3px; }
+    .exp-doc.denied { background: #fee2e2; color: var(--red); }
+
+    /* Eval verdict row */
+    .eval-row {
+      border-top: 1px solid #c7d2fe;
+      padding-top: 5px;
+      margin-top: 2px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .eval-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .eval-pass    { background: #dcfce7; color: var(--green); }
+    .eval-fail    { background: #fee2e2; color: var(--red); }
+    .eval-partial { background: #fef3c7; color: var(--amber); }
+    .eval-na      { background: #f3f4f6; color: var(--muted); }
+
+    /* Loading */
+    .msg-loading { display: flex; justify-content: flex-start; }
+    .loading-bubble {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      box-shadow: var(--shadow);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .dot { width: 7px; height: 7px; background: var(--navy); border-radius: 50%; animation: bounce 1.3s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.30s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Input Area ── */
+    .input-area {
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .input-area textarea {
+      flex: 1;
+      font-family: inherit;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      max-height: 100px;
+      min-height: 40px;
+      overflow-y: auto;
+      transition: border-color 0.15s;
+      color: var(--text);
+    }
+    .input-area textarea:focus { border-color: var(--navy); }
+    .input-area textarea::placeholder { color: var(--muted); }
+    .btn-send {
+      background: var(--navy);
+      color: var(--white);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 0 20px;
+      height: 40px;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-send:hover { background: var(--navy-light); }
+    .btn-send:disabled { background: var(--border); cursor: not-allowed; }
+
+    .error-card {
+      background: #fff0f0;
+      border: 1px solid #fca5a5;
+      border-left: 4px solid var(--red);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--red);
+      max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header>
+    <span class="logo">🏛</span>
+    <h1>Tax Authority AI Assistant</h1>
+    <span class="subtitle">CRAG · Zero-Hallucination · Citation-First</span>
+    <div class="help-menu-wrap">
+      <button
+        class="help-btn"
+        id="help-btn"
+        type="button"
+        title="Quick help"
+        aria-label="Open quick help"
+        onclick="toggleHelpPanel()"
+      >ⓘ</button>
+      <div class="help-panel" id="help-panel">
+        <h3>Quick Review</h3>
+
+        <div class="help-section">
+          <div class="help-title">Clearance hierarchy</div>
+          <ul>
+            <li>Helpdesk = clearance 2</li>
+            <li>Tax Inspector = clearance 3</li>
+            <li>Legal Counsel = clearance 4</li>
+            <li>FIOD Investigator = clearance 5</li>
+          </ul>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title">Common words & acronyms</div>
+          <ul>
+            <li><span class="help-inline-code">RAG</span> = Retrieval-Augmented Generation</li>
+            <li><span class="help-inline-code">CRAG</span> = Corrective RAG</li>
+            <li><span class="help-inline-code">RBAC</span> = Role-Based Access Control</li>
+            <li><span class="help-inline-code">FIOD</span> = fraud investigation unit</li>
+            <li><span class="help-inline-code">ECLI</span> = court ruling identifier</li>
+          </ul>
+        </div>
+
+        <div class="help-section">
+          <div class="help-title">Trace reading</div>
+          <ul>
+            <li>Light states = normal pipeline steps</li>
+            <li>Dark states = important recovery or final outcome states</li>
+            <li><span class="help-inline-code">HYDE_QUERY</span> = fallback retrieval attempt</li>
+            <li><span class="help-inline-code">ABSTAIN</span> = safe refusal to answer</li>
+            <li><span class="help-inline-code">END</span> = workflow finished</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Runtime Tool Chain Banner ── -->
+  <div id="runtime-banner">
+    <span class="banner-label">⚙ Active stack:</span>
+    <span id="tool-pills" style="display:flex;gap:5px;flex-wrap:wrap;">
+      <span class="tool-pill fake">Loading…</span>
+    </span>
+  </div>
+
+  <!-- ── User Bar ── -->
+  <div class="user-bar">
+    <label for="user-select">Active User:</label>
+    <select id="user-select" onchange="onUserChange()">
+      <option value="u_helpdesk_01"  data-role="helpdesk"          data-clearance="2">👤  u_helpdesk_01  —  Helpdesk (clearance 2)</option>
+      <option value="u_inspector_01" data-role="tax_inspector"      data-clearance="3">🔍  u_inspector_01  —  Tax Inspector (clearance 3)</option>
+      <option value="u_legal_01"     data-role="legal_counsel"      data-clearance="4">⚖️  u_legal_01  —  Legal Counsel (clearance 4)</option>
+      <option value="u_fiod_01"      data-role="fiod_investigator"  data-clearance="5">🔒  u_fiod_01  —  FIOD Investigator (clearance 5)</option>
+    </select>
+    <span id="role-badge" class="role-badge">👤 helpdesk</span>
+    <span id="clearance-badge" class="clearance-badge">Clearance: 2</span>
+  </div>
+
+  <!-- ── Main Layout ── -->
+  <div class="main-layout">
+
+    <!-- ── Sample Queries Sidebar ── -->
+    <div class="sidebar">
+      <div class="sidebar-header">📋 Sample Queries</div>
+      <div class="sidebar-list" id="sample-list">
+        <div style="padding:10px 14px;font-size:11px;color:var(--muted);">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── Chat Column ── -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="chat-area" id="chat-area">
+        <div class="welcome" id="welcome">
+          <div class="icon">🤖</div>
+          <h2>Tax Authority AI Assistant</h2>
+          <p>Select a user above, pick a sample query from the left panel, or type your own question.</p>
+          <p style="margin-top:6px;font-size:12px;color:#9ca3af;">
+            Every answer includes citations, a state machine trace, and (for sample queries) an expected-behavior comparison.
+          </p>
+        </div>
+      </div>
+
+      <!-- ── Input ── -->
+      <div class="input-area">
+        <textarea
+          id="query-input"
+          rows="1"
+          placeholder="Ask a tax question…"
+          onkeydown="onKeyDown(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button class="btn-send" id="btn-send" onclick="sendMessage()">
+          <span>Send</span><span>↵</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── State ────────────────────────────────────────────────────────
+    let isLoading = false;
+    let lastSuccessfulContext = null;
+    let activeSampleQueryId = null;   // which sample query is selected
+    let expectedBehaviors = {};       // query_id → expected_behavior obj
+
+    const API_BASE = location.protocol === 'file:' ? 'http://localhost:8000' : '';
+
+    const USER_ICONS = {
+      helpdesk: '👤', tax_inspector: '🔍',
+      legal_counsel: '⚖️', fiod_investigator: '🔒',
+    };
+
+    // ── Boot: load runtime info + sample queries ──────────────────────
+    async function boot() {
+      await Promise.all([loadRuntimeBanner(), loadSampleQueries()]);
+    }
+
+    async function loadRuntimeBanner() {
+      try {
+        const r = await fetch(API_BASE + '/health');
+        if (!r.ok) return;
+        const d = await r.json();
+        renderRuntimeBanner(d);
+      } catch (_) {}
+    }
+
+    function renderRuntimeBanner(info) {
+      const pills = document.getElementById('tool-pills');
+      if (!info.tools_active) return;
+      pills.innerHTML = info.tools_active.map(t => {
+        let cls = 'fake';
+        if (t.includes('Bedrock')) cls = 'bedrock';
+        else if (t.includes('(real)') || t.toLowerCase().includes('langgraph')) cls = 'real';
+        else if (t.includes('disabled')) cls = 'disabled';
+        const icon = t.includes('OpenSearch') ? '🔍' :
+                     t.includes('Redis') ? '⚡' :
+                     t.includes('LangGraph') ? '🔗' :
+                     t.includes('Bedrock Embed') ? '🧲' :
+                     t.includes('Bedrock Rerank') ? '📊' :
+                     t.includes('Bedrock Generation') ? '🤖' :
+                     t.includes('Extractive') ? '📎' :
+                     t.includes('TF-IDF') ? '📐' : '⚙';
+        return `<span class="tool-pill ${cls}">${icon} ${escHtml(t)}</span>`;
+      }).join('');
+    }
+
+    async function loadSampleQueries() {
+      try {
+        const [qr, er] = await Promise.all([
+          fetch(API_BASE + '/queries'),
+          fetch(API_BASE + '/expected'),
+        ]);
+        const qd = qr.ok ? await qr.json() : { queries: [] };
+        const ed = er.ok ? await er.json() : { expected_behaviors: [] };
+
+        // Index expected behaviors by query_id
+        for (const eb of (ed.expected_behaviors || [])) {
+          expectedBehaviors[eb.query_id] = eb;
+        }
+
+        renderSampleList(qd.queries || []);
+      } catch (_) {
+        document.getElementById('sample-list').innerHTML =
+          '<div style="padding:10px 14px;font-size:11px;color:var(--red);">Failed to load samples</div>';
+      }
+    }
+
+    // _sampleQueryData stores query data indexed by element id for delegated clicks
+    const _sampleQueryData = {};
+
+    function renderSampleList(queries) {
+      const list = document.getElementById('sample-list');
+      if (!queries.length) {
+        list.innerHTML = '<div style="padding:10px 14px;font-size:11px;color:var(--muted);">No sample queries found.</div>';
+        return;
+      }
+      // Store data in JS object, use data-sqid attribute for click delegation
+      queries.forEach(function(q) {
+        _sampleQueryData[q.id] = q;
+      });
+      list.innerHTML = queries.map(function(q) {
+        const purposeHtml = q.purpose
+          ? '<div class="sq-purpose">' + escHtml(q.purpose) + '</div>'
+          : '';
+        return '<div class="sample-query-item" id="sq-' + escAttr(q.id) + '" data-sqid="' + escAttr(q.id) + '">'
+          + '<div class="sq-query">' + escHtml(q.query) + '</div>'
+          + '<div class="sq-user">&#128100; ' + escHtml(q.user_id) + '</div>'
+          + purposeHtml
+          + '</div>';
+      }).join('');
+
+      // Attach delegated click listener
+      list.addEventListener('click', function(e) {
+        const item = e.target.closest('[data-sqid]');
+        if (!item) return;
+        const sqid = item.getAttribute('data-sqid');
+        // Find original id from _sampleQueryData
+        const q = Object.values(_sampleQueryData).find(function(x) { return escAttr(x.id) === sqid; });
+        if (q) selectSampleQuery(q.id, q.query);
+      });
+    }
+
+    function selectSampleQuery(queryId, queryText) {
+      // Highlight the selected item
+      document.querySelectorAll('.sample-query-item').forEach(el => el.classList.remove('active'));
+      const el = document.getElementById('sq-' + queryId);
+      if (el) el.classList.add('active');
+
+      activeSampleQueryId = queryId;
+
+      // Fill query text
+      const ta = document.getElementById('query-input');
+      ta.value = queryText;
+      autoResize(ta);
+      ta.focus();
+    }
+
+    // ── User selector ────────────────────────────────────────────────
+    function onUserChange() {
+      const sel = document.getElementById('user-select');
+      const opt = sel.options[sel.selectedIndex];
+      const role = opt.dataset.role;
+      const clearance = opt.dataset.clearance;
+      const icon = USER_ICONS[role] || '👤';
+      document.getElementById('role-badge').textContent = `${icon} ${role}`;
+      document.getElementById('clearance-badge').textContent = `Clearance: ${clearance}`;
+      lastSuccessfulContext = null;
+    }
+    onUserChange();
+
+    function toggleHelpPanel() {
+      const panel = document.getElementById('help-panel');
+      panel.classList.toggle('open');
+    }
+
+    document.addEventListener('click', function(e) {
+      const panel = document.getElementById('help-panel');
+      const btn = document.getElementById('help-btn');
+      if (!panel || !btn) return;
+      if (panel.contains(e.target) || btn.contains(e.target)) return;
+      panel.classList.remove('open');
+    });
+
+    // ── Textarea auto-resize ─────────────────────────────────────────
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+    }
+
+    // ── Enter = send ─────────────────────────────────────────────────
+    function onKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    // ── Send message ─────────────────────────────────────────────────
+    async function sendMessage() {
+      if (isLoading) return;
+      const userId = document.getElementById('user-select').value;
+      const ta = document.getElementById('query-input');
+      const rawQuery = ta.value.trim();
+      if (!rawQuery) return;
+
+      const welcome = document.getElementById('welcome');
+      if (welcome) welcome.style.display = 'none';
+
+      appendQuestion(rawQuery);
+      ta.value = '';
+      ta.style.height = 'auto';
+
+      const loadingId = appendLoading();
+      setLoading(true);
+
+      // Capture which sample query was active at send time
+      const sentSampleId = activeSampleQueryId;
+      activeSampleQueryId = null; // reset — next manual query is not a sample
+
+      try {
+        const resp = await fetch(API_BASE + '/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, query: rawQuery }),
+        });
+        removeLoading(loadingId);
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ detail: 'Unknown error' }));
+          appendError(`HTTP ${resp.status}: ${err.detail || 'Request failed'}`);
+          return;
+        }
+
+        const data = await resp.json();
+        if (!data.abstained) lastSuccessfulContext = { query: rawQuery };
+        appendAnswer(data, sentSampleId);
+
+      } catch (e) {
+        removeLoading(loadingId);
+        appendError(`Network error: ${e.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ── Render helpers ───────────────────────────────────────────────
+
+    function appendQuestion(text) {
+      const area = document.getElementById('chat-area');
+      const div = document.createElement('div');
+      div.className = 'msg-question';
+      div.innerHTML = `<div class="bubble">${escHtml(text)}</div>`;
+      area.appendChild(div);
+      scrollBottom();
+    }
+
+    let loadingCounter = 0;
+    function appendLoading() {
+      const id = 'loading-' + (++loadingCounter);
+      const area = document.getElementById('chat-area');
+      const div = document.createElement('div');
+      div.className = 'msg-loading';
+      div.id = id;
+      div.innerHTML = `<div class="loading-bubble"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+      area.appendChild(div);
+      scrollBottom();
+      return id;
+    }
+    function removeLoading(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+    function appendError(msg) {
+      const area = document.getElementById('chat-area');
+      const div = document.createElement('div');
+      div.className = 'msg-answer';
+      div.innerHTML = `<div class="error-card">⚠️ ${escHtml(msg)}</div>`;
+      area.appendChild(div);
+      scrollBottom();
+    }
+
+    function appendAnswer(data, sampleQueryId) {
+      const area = document.getElementById('chat-area');
+      const div = document.createElement('div');
+      div.className = 'msg-answer';
+
+      const isAbstained = data.abstained;
+      const graderLabel = (data.grader_label || '').toLowerCase();
+      const latencyMs = data.latency_seconds != null
+        ? (data.latency_seconds * 1000).toFixed(0) + ' ms' : '—';
+
+      // Badges
+      let badges = '';
+      if (data.cache_hit) badges += `<span class="badge badge-cache">⚡ Cache hit</span>`;
+      if (isAbstained)
+        badges += `<span class="badge badge-abstained">⚠️ Abstained</span>`;
+      else if (graderLabel === 'relevant')
+        badges += `<span class="badge badge-relevant">✓ Relevant</span>`;
+      else if (graderLabel === 'ambiguous')
+        badges += `<span class="badge badge-ambiguous">~ Ambiguous</span>`;
+      else if (graderLabel === 'irrelevant')
+        badges += `<span class="badge badge-irrelevant">✗ Irrelevant</span>`;
+      badges += `<span class="badge badge-latency">⏱ ${escHtml(latencyMs)}</span>`;
+
+      // Answer body
+      let body = '';
+      if (isAbstained) {
+        const reason = data.abstention_reason || 'unknown_reason';
+        body = `
+          <div class="abstained-msg">⛔ This question could not be answered.</div>
+          <div class="abstained-reason">Reason: ${escHtml(formatReason(reason))}</div>`;
+      } else {
+        body = `<div class="answer-text">${escHtml(data.answer || '')}</div>`;
+      }
+
+      // Citations
+      let citationsHtml = '';
+      if (data.citations && data.citations.length > 0) {
+        const items = data.citations.map(c => `
+          <div class="citation-item">
+            <strong>${escHtml(c.document_name)}</strong>&nbsp;—&nbsp;Article&nbsp;${escHtml(c.article)},&nbsp;§${escHtml(c.paragraph)}
+            <br/><span style="font-size:10px;color:#9ca3af;">chunk: ${escHtml(c.chunk_id)}</span>
+          </div>`).join('');
+        citationsHtml = `
+          <div class="citations-section">
+            <div class="section-title">📎 Citations (${data.citations.length})</div>
+            <div class="citation-list">${items}</div>
+          </div>`;
+      }
+
+      // Trace
+      let traceHtml = '';
+      if (data.trace && data.trace.length > 0) {
+        const highlightStates = new Set(['ABSTAIN', 'END', 'REWRITE_QUERY', 'HYDE_QUERY', 'CACHE_HIT']);
+        const steps = data.trace.map((s, i) => {
+          const cls = highlightStates.has(s) ? 'trace-step highlight' : 'trace-step';
+          const arrow = i < data.trace.length - 1 ? `<span class="trace-arrow">›</span>` : '';
+          return `<span class="${cls}">${escHtml(s)}</span>${arrow}`;
+        }).join(' ');
+        traceHtml = `
+          <div class="trace-section">
+            <div class="section-title">🔄 CRAG State Machine Trace</div>
+            <div class="trace-steps">${steps}</div>
+          </div>`;
+      }
+
+      // Expected behavior comparison (only for sample queries)
+      let expectedHtml = '';
+      if (sampleQueryId) {
+        expectedHtml = buildExpectedCard(sampleQueryId, data);
+      }
+
+      div.innerHTML = `
+        <div class="answer-card${isAbstained ? ' abstained' : ''}">
+          <div class="answer-header">${badges}</div>
+          ${body}
+          ${citationsHtml}
+          ${traceHtml}
+          ${expectedHtml}
+        </div>`;
+
+      area.appendChild(div);
+      scrollBottom();
+    }
+
+    // ── Expected Behavior Card ────────────────────────────────────────
+    function buildExpectedCard(queryId, data) {
+      const eb = expectedBehaviors[queryId];
+      if (!eb) return '';
+
+      const mayRetrieve    = eb.may_retrieve    || [];
+      const mustNotRetrieve= eb.must_not_retrieve || [];
+      const expectedGen    = eb.expected_generation || '';
+
+      // Evaluate actual result against expected
+      const retrievedDocIds = new Set(
+        (data.citations || []).map(c => c.document_id)
+          .concat(data.retrieved_chunk_ids.map(id => id.split('::')[0]))
+      );
+      const isAbstained = data.abstained;
+
+      // Check must_not violations
+      const leaks = mustNotRetrieve.filter(doc => retrievedDocIds.has(doc));
+
+      // Check expected generation type
+      const abstainExpected = expectedGen.startsWith('abstain');
+      const answerExpected  = !abstainExpected;
+
+      let verdicts = [];
+      // RBAC leakage check
+      if (leaks.length === 0) {
+        verdicts.push({ label: 'RBAC: No leakage', cls: 'eval-pass' });
+      } else {
+        verdicts.push({ label: `RBAC: LEAKED ${leaks.join(', ')}`, cls: 'eval-fail' });
+      }
+      // Abstention check
+      if (abstainExpected && isAbstained) {
+        verdicts.push({ label: 'Abstention: correct', cls: 'eval-pass' });
+      } else if (abstainExpected && !isAbstained) {
+        verdicts.push({ label: 'Abstention: should have abstained', cls: 'eval-fail' });
+      } else if (answerExpected && isAbstained) {
+        verdicts.push({ label: 'Answer: unexpectedly abstained', cls: 'eval-partial' });
+      } else {
+        verdicts.push({ label: 'Answer: produced', cls: 'eval-pass' });
+      }
+      // Citation completeness
+      if (!abstainExpected) {
+        const reqFields = eb.required_citation_fields || [];
+        const hasCitations = data.citations && data.citations.length > 0;
+        if (reqFields.length > 0 && hasCitations) {
+          verdicts.push({ label: 'Citations: present', cls: 'eval-pass' });
+        } else if (reqFields.length > 0 && !hasCitations && !isAbstained) {
+          verdicts.push({ label: 'Citations: missing', cls: 'eval-fail' });
+        }
+      }
+
+      const verdictBadges = verdicts.map(v => `<span class="eval-badge ${v.cls}">${escHtml(v.label)}</span>`).join('');
+
+      const mayDocs   = mayRetrieve.map(d => `<span class="exp-doc">${escHtml(d)}</span>`).join(' ');
+      const denyDocs  = mustNotRetrieve.map(d => `<span class="exp-doc denied">🚫 ${escHtml(d)}</span>`).join(' ');
+
+      return `
+        <div class="expected-card">
+          <div class="exp-title">🎯 Expected Behavior (${escHtml(queryId)})</div>
+          <div class="exp-row">
+            <span class="exp-label">May retrieve:</span>
+            <span>${mayDocs || '<span style="color:var(--muted)">none</span>'}</span>
+          </div>
+          <div class="exp-row">
+            <span class="exp-label">Must NOT retrieve:</span>
+            <span>${denyDocs || '<span style="color:var(--muted)">—</span>'}</span>
+          </div>
+          <div class="exp-row">
+            <span class="exp-label">Expected output:</span>
+            <span style="font-size:11px;color:var(--purple);">${escHtml(expectedGen.replace(/_/g,' '))}</span>
+          </div>
+          <div class="eval-row">${verdictBadges}</div>
+        </div>`;
+    }
+
+    // ── Utilities ────────────────────────────────────────────────────
+
+    function setLoading(v) {
+      isLoading = v;
+      document.getElementById('btn-send').disabled = v;
+      document.getElementById('query-input').disabled = v;
+    }
+
+    function scrollBottom() {
+      const area = document.getElementById('chat-area');
+      setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"');
+    }
+
+    function escAttr(s) {
+      return String(s).replace(/[^a-zA-Z0-9_\-]/g, '_');
+    }
+
+    function formatReason(reason) {
+      const map = {
+        prompt_injection_detected:           'Prompt injection detected — request blocked.',
+        no_authorized_context:               'No authorized documents found for your role.',
+        ambiguous_evidence_after_correction: 'Context was ambiguous even after query correction.',
+        no_answer:                           'The pipeline produced no answer.',
+        citation_incomplete:                 'An incomplete citation — abstaining to prevent hallucination.',
+        citation_not_in_authorized_context:  'A citation was not from the retrieved authorized set.',
+        no_citation_complete_chunks:         'No retrieved chunks had complete citation metadata.',
+      };
+      return map[reason] || reason.replace(/_/g,' ');
+    }
+
+    // ── Start ────────────────────────────────────────────────────────
+    boot();
+  </script>
+</body>
+</html>

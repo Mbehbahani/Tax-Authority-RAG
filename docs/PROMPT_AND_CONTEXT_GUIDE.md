@@ -24,7 +24,7 @@ Do not read personal notes for implementation.
 
 Claude Code is not limited to existing placeholder files or scaffolding. It may refactor, add, remove, or reorganize implementation files when that improves the Stage 1 local PoC. It must preserve the project constraints and avoid deployment.
 
-After Stage 1 implementation, Claude Code must create [`docs/STAGE_1_IMPLEMENTATION_REPORT.md`](STAGE_1_IMPLEMENTATION_REPORT.md) using [`docs/STAGE_1_REPORT_TEMPLATE.md`](STAGE_1_REPORT_TEMPLATE.md).
+After Stage 1 implementation, Claude Code must create [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](reports/STAGE_1_IMPLEMENTATION_REPORT.md) using [`docs/STAGE_1_REPORT_TEMPLATE.md`](STAGE_1_REPORT_TEMPLATE.md).
 
 ## AWS Verification Only
 
@@ -40,4 +40,5 @@ Use [`prompts/FINAL_ASSESSMENT_WRITING_PROMPT.md`](../prompts/FINAL_ASSESSMENT_W
 - Read fixture files only when implementing the related tests.
 - Do not duplicate the same requirements in new docs.
 - Prefer code and tests over more planning documents during Stage 1.
+
 

@@ -1,0 +1,77 @@
+services:
+  # Stage B — Real System / Bedrock Integration Validation
+  # Full production-shaped demo with real OpenSearch, Redis, LangGraph, and
+  # AWS Bedrock Embed/Rerank/Claude calls. Requires AWS credentials and Bedrock
+  # model access in eu-central-1.
+  api:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8002:8000"
+    env_file:
+      - .env.example
+    environment:
+      # Retrieval
+      - RETRIEVAL_BACKEND=opensearch
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_INDEX=tax-rag-chunks-v1-bedrock
+      # Smart indexing: if the persistent OpenSearch volume already contains
+      # documents, startup reuses it and skips re-embedding. If the index is
+      # missing or empty, the app embeds the corpus with Bedrock and indexes it.
+      - OPENSEARCH_RECREATE_INDEX=false
+
+      # Real Bedrock model calls
+      - BEDROCK_EMBEDDINGS_ENABLED=true
+      - BEDROCK_RERANK_ENABLED=true
+      - BEDROCK_GENERATION_ENABLED=true
+      - BEDROCK_EMBEDDING_MODEL_ID=eu.cohere.embed-v4:0
+      - BEDROCK_RERANK_MODEL_ID=cohere.rerank-v3-5:0
+      - BEDROCK_GENERATION_MODEL_ID=eu.anthropic.claude-haiku-4-5-20251001-v1:0
+
+      # Real Redis semantic cache
+      - SEMANTIC_CACHE_ENABLED=true
+      - SEMANTIC_CACHE_BACKEND=redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # Real LangGraph orchestration
+      - RAG_GRAPH_BACKEND=langgraph
+
+      # AWS profile from mounted host ~/.aws directory
+      - AWS_PROFILE=default
+      - AWS_REGION=eu-central-1
+      - BEDROCK_REGION=eu-central-1
+    volumes:
+      - ./app:/app/app
+      - ./sample_corpus:/app/sample_corpus
+      - ./sample_requests:/app/sample_requests
+      # Windows host AWS credentials: C:\Users\<you>\.aws -> /root/.aws
+      - ${USERPROFILE}/.aws:/root/.aws:ro
+    depends_on:
+      - redis
+      - opensearch
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=LocalStage1BAdmin!123
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+      - bootstrap.memory_lock=false
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+volumes:
+  opensearch-data:
+  redis-data:

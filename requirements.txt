@@ -6,9 +6,9 @@ pytest==8.3.4
 
 # Optional extensions - keep commented until a later stage needs them so the
 # local PoC stays lightweight and dependency-free.
-# langgraph
+langgraph
 opensearch-py  # OpenSearch client library
-# redis
+redis
 boto3  # Optional Stage 2 Bedrock catalog/runtime compatibility checks
 deepeval  # Stage 4 formal RAG evaluation framework; offline tests use deterministic metrics
 # opentelemetry-api
