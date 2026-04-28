@@ -110,11 +110,11 @@ def test_graph_abstains_on_prompt_injection(backend, embedder, users):
     assert state.abstention_reason == "prompt_injection_detected"
 
 
-def test_graph_abstains_on_version_conflict(backend, embedder, users):
+def test_graph_abstains_when_requested_tax_year_has_no_authorized_source(backend, embedder, users):
     deps = GraphDeps(backend=backend, embedder=embedder)
     state = run_graph(
         user=users["u_inspector_01"],
-        query="What home office deduction rule applies for tax year 2023?",
+        query="What home office deduction rule applies for tax year 2026?",
         deps=deps,
     )
     assert state.answer.abstained

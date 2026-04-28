@@ -50,16 +50,16 @@ def test_no_claims_without_citations(rag_service, users):
 def test_missing_context_triggers_abstention(rag_service, users):
     r = rag_service.ask(
         users["u_helpdesk_01"],
-        "What is the Box 1 tax rate for 2024?",
+        "What is the Box 1 tax rate for 2026?",
     )
     assert r.abstained
     assert r.citations == []
 
 
-def test_version_conflict_triggers_abstention(rag_service, users):
+def test_missing_requested_tax_year_triggers_abstention(rag_service, users):
     r = rag_service.ask(
         users["u_helpdesk_01"],
-        "What home office deduction rule applies for tax year 2023?",
+        "What home office deduction rule applies for tax year 2021?",
     )
     assert r.abstained
 
