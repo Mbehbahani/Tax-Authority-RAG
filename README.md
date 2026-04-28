@@ -155,26 +155,6 @@ docker compose -f docker-compose.test.yml --profile bedrock up --build api-bedro
 
 Then open **`http://localhost:8002/`** to interact with the live system.
 
-The web UI shows:
-- Active stack components (OpenSearch, Redis, LangGraph, Bedrock models)
-- Sample queries with expected behaviors
-- Real-time CRAG trace visualization
-- Citation validation and RBAC leakage checks
-
-## Why this README is intentionally structured this way
-
-For hiring teams and senior engineers, the key question is usually not only
-“Is the architecture good?” but also:
-
-- Can this candidate make strong technical choices under constraints?
-- Can they separate PoC evidence from production claims?
-- Can they communicate clearly to engineers, reviewers, and stakeholders?
-
-This README therefore prioritizes:
-
-1. **fast comprehension** of the system’s strengths,
-2. **direct links to evidence**, and
-3. **honest scope boundaries**.
 
 ## Repository map
 
