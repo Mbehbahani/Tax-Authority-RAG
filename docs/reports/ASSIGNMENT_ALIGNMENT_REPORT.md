@@ -26,7 +26,7 @@ executing a broader paid DeepEval/LLM-judge benchmark over a larger corpus.
 | Zero-hallucination tolerance | Strong | [`app/rag/generation.py`](../app/rag/generation.py), [`tests/eval/test_zero_hallucination.py`](../tests/eval/test_zero_hallucination.py), [`app/rag/evaluation.py`](../app/rag/evaluation.py) | Every accepted answer requires complete citations from retrieved context. |
 | Exact citation: document name, article, paragraph | Strong | [`app/rag/models.py`](../app/rag/models.py), [`app/rag/generation.py`](../app/rag/generation.py) | Citation model includes chunk ID, document ID, document name, article, paragraph. |
 | Helpdesk cannot access FIOD | Strong | [`tests/security/test_rbac_and_injection.py`](../tests/security/test_rbac_and_injection.py), [`tests/security/rbac_llm_scenarios.json`](../tests/security/rbac_llm_scenarios.json) | Tested across retrieval, generation, prompt injection, and cache isolation. |
-| High performance / TTFT < 1.5s | Good | [`tests/perf/test_perf_smoke.py`](../tests/perf/test_perf_smoke.py), [`STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md) | Local tests pass; true 20M-chunk performance remains a production benchmark task. |
+| High performance / TTFT < 1.5s | Good | [`tests/perf/test_perf_smoke.py`](../tests/perf/test_perf_smoke.py), [`IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md) | Local tests pass; true 20M-chunk performance remains a production benchmark task. |
 | Module 1 chunking strategy | Strong | [`../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md), [`../MODULE_1_INGESTION.md`](../MODULE_1_INGESTION.md) | Provides metadata-preserving pseudo-code. |
 | Module 1 vector DB and HNSW config | Strong | [`app/rag/retrieval.py`](../app/rag/retrieval.py), [`tests/integration/opensearch_index_config_expected.json`](../tests/integration/opensearch_index_config_expected.json) | HNSW `m=32`, `ef_construction=256`, `ef_search=128`; OpenSearch selected. |
 | OOM prevention | Good | [`../PERFORMANCE_TEST_SCENARIOS.md`](../PERFORMANCE_TEST_SCENARIOS.md), [`../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md) | Bounded top-k, shard sizing, quantization guidance, circuit breakers. Full OOM load test remains future work. |
@@ -42,7 +42,7 @@ executing a broader paid DeepEval/LLM-judge benchmark over a larger corpus.
 | Semantic cache threshold | Strong | [`.env.example`](../.env.example), [`../MODULE_4_PRODUCTION_OPS.md`](../MODULE_4_PRODUCTION_OPS.md) | Safe `0.95`, minimum `0.92`. |
 | Database-level RBAC stage | Strong | [`app/rag/security.py`](../app/rag/security.py), [`app/rag/retrieval.py`](../app/rag/retrieval.py) | RBAC before lexical/vector scoring, fusion, reranking, prompt, generation, cache. |
 | CI/CD and observability | Strong | [`tests/eval/ci_eval_gates.json`](../tests/eval/ci_eval_gates.json), [`app/rag/evaluation.py`](../app/rag/evaluation.py) | DeepEval-ready metrics, release gate thresholds, audit fields. |
-| Faithfulness and context precision metrics | Strong | [`STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md) | DeepEval installed; formal metric table defined. |
+| Faithfulness and context precision metrics | Strong | [`IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md), [`app/rag/evaluation.py`](../app/rag/evaluation.py) | DeepEval-ready structure and formal metric table are defined. |
 
 ## Validated Test Evidence
 
@@ -71,12 +71,13 @@ real production launch:
 ## Final Assessment Readiness
 
 The repository is ready for final assessment writing. The strongest final answer
-source is [`../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md), supported by the stage reports:
+source is [`../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](../FINAL_TECHNICAL_ASSESSMENT_ANSWER.md), supported by:
 
-- [`STAGE_1_IMPLEMENTATION_REPORT.md`](STAGE_1_IMPLEMENTATION_REPORT.md)
-- [`STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md`](STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md)
-- [`STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md`](STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md)
-- [`STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
+- [`FINAL_ASSIGNMENT_REPORT.md`](FINAL_ASSIGNMENT_REPORT.md)
+- [`IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md)
+- [`TEST_STRATEGY.md`](../TEST_STRATEGY.md)
+- [`PERFORMANCE_TEST_SCENARIOS.md`](../PERFORMANCE_TEST_SCENARIOS.md)
+
 
 
 

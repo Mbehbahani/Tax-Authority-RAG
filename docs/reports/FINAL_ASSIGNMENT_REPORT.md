@@ -120,11 +120,11 @@ The latest consolidated offline validation evidence from the existing reports is
 
 | Evidence | Result | Source |
 | --- | ---: | --- |
-| Stage 1 initial deterministic suite | `75 passed, 3 skipped` | `STAGE_1_IMPLEMENTATION_REPORT.md` |
-| Stage 2 offline suite | `83 passed, 6 skipped` | `STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md` |
-| Stage 3 offline suite | `90 passed, 7 skipped` | `STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md` |
-| Stage 4 offline suite | `97 passed, 9 skipped` | `STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md` |
-| Live local OpenSearch optional tests | `3 passed` | `STAGE_1_IMPLEMENTATION_REPORT.md` / `ASSIGNMENT_ALIGNMENT_REPORT.md` |
+| Stage 1 initial deterministic suite | `75 passed, 3 skipped` | `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` |
+| Stage 2 offline suite | `83 passed, 6 skipped` | `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` |
+| Stage 3 offline suite | `90 passed, 7 skipped` | `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` |
+| Stage 4 offline suite | `97 passed, 9 skipped` | `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` |
+| Live local OpenSearch optional tests | `3 passed` | `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` / `ASSIGNMENT_ALIGNMENT_REPORT.md` |
 | RBAC leakage | `0` | Security/eval tests |
 | Citation completeness | `100% on accepted answers` | Eval tests |
 | Citation accuracy | `100% cited chunks are retrieved/authorized` | Eval tests |
@@ -496,10 +496,7 @@ final stories.
 | --- | --- |
 | `FINAL_TECHNICAL_ASSESSMENT_ANSWER.md` | Main architecture details and module-by-module design. |
 | `ASSIGNMENT_ALIGNMENT_REPORT.md` | Requirement coverage checklist. |
-| `STAGE_1_IMPLEMENTATION_REPORT.md` | Appendix for deterministic/offline PoC evidence. |
-| `STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md` | Appendix for Bedrock model compatibility and runtime ID findings. |
-| `STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md` | Appendix for feature-flag wiring and Bedrock graph validation. |
-| `STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md` | Appendix for formal evaluation metrics and release-gate targets. |
+| `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` | Merged appendix for implementation evolution, validation scope, and consolidated stage evidence. |
 | `RUNNING_MODES.md` | Reproduction guide for Mode 1, Mode 2, and Mode 3. |
 | `PERFORMANCE_TEST_SCENARIOS.md` | Performance benchmark plan and production targets. |
 | `TEST_STRATEGY.md` | Test strategy and CI/CD gate definitions. |
@@ -509,4 +506,4 @@ Reviewer reading order:
 1. This report: `FINAL_ASSIGNMENT_REPORT.md`.
 2. `FINAL_TECHNICAL_ASSESSMENT_ANSWER.md` for detailed architecture.
 3. `ASSIGNMENT_ALIGNMENT_REPORT.md` for requirement mapping.
-4. Stage reports as appendices.
+4. `IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md` as the merged implementation/validation appendix.

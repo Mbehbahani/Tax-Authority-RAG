@@ -23,7 +23,7 @@ It is designed to show both:
 1. [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
 2. [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
 3. [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
-4. Stage reports in `docs/reports/`
+4. [`docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md)
 
 ## Example of live testing
 
@@ -124,8 +124,7 @@ docker compose -f docker-compose.test.yml up --build
 - **Final answer:** [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
 - **Architecture plan:** [`docs/ARCHITECTURE_PLAN.md`](docs/ARCHITECTURE_PLAN.md)
 - **Assignment fit:** [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
-- **Evaluation & metrics:** [`docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
-- **Local PoC report:** [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md)
+- **Implementation and validation overview:** [`docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md)
 
 ## Live System Evidence
 

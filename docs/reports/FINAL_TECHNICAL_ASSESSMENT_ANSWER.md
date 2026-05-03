@@ -569,10 +569,7 @@ This design is concrete enough for immediate engineering work:
 
 The validated local implementation and reports supporting this answer are:
 
-- [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](reports/STAGE_1_IMPLEMENTATION_REPORT.md)
-- [`docs/reports/STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md`](reports/STAGE_2_BEDROCK_COMPATIBILITY_REPORT.md)
-- [`docs/reports/STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md`](reports/STAGE_3_BEDROCK_RAG_EVALUATION_REPORT.md)
-- [`docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
+- [`docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md)
 
 
 ---
