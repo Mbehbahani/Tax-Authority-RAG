@@ -11,6 +11,7 @@ from app.rag.evaluation import (
     deepeval_available,
     evaluate_rbac_scenarios,
     evaluate_routing_modes,
+    evaluate_single_scenario,
     evaluate_zero_hallucination_scenarios,
     summarize_evaluations,
 )
@@ -106,3 +107,134 @@ def test_routing_mode_evaluation_summarizes_each_mode(rag_service, users):
 
 def test_deepeval_dependency_check_returns_boolean():
     assert isinstance(deepeval_available(), bool)
+
+
+# ---------------------------------------------------------------------------
+# New: wired performance + IR metrics
+# ---------------------------------------------------------------------------
+
+
+def test_summary_has_latency_percentiles(rag_service, users):
+    rows = evaluate_zero_hallucination_scenarios(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenarios_path=ROOT / "tests" / "eval" / "zero_hallucination_scenarios.json",
+    )
+    summary = summarize_evaluations(rows, mode="deterministic")
+    # All three percentile fields must be present and non-negative.
+    assert summary.latency_p50_seconds >= 0.0
+    assert summary.latency_p95_seconds >= 0.0
+    assert summary.latency_p99_seconds >= 0.0
+    # p50 <= p95 <= p99 for any non-empty latency sample.
+    assert summary.latency_p50_seconds <= summary.latency_p95_seconds
+    assert summary.latency_p95_seconds <= summary.latency_p99_seconds
+    # ttft_p95_seconds and latency_p95_seconds are the same measurement in
+    # this local PoC (no streaming; TTFT == end-to-end latency).
+    assert summary.ttft_p95_seconds == summary.latency_p95_seconds
+
+
+def test_summary_has_cache_hit_rate(rag_service, users):
+    rows = evaluate_zero_hallucination_scenarios(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenarios_path=ROOT / "tests" / "eval" / "zero_hallucination_scenarios.json",
+    )
+    summary = summarize_evaluations(rows, mode="deterministic")
+    assert 0.0 <= summary.cache_hit_rate <= 1.0
+
+
+def test_ir_metrics_are_none_when_no_gold_labels(rag_service, users):
+    # The bundled zero_hallucination_scenarios.json has no relevant_document_ids,
+    # so IR ranking metrics must be None rather than a guessed value.
+    rows = evaluate_zero_hallucination_scenarios(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenarios_path=ROOT / "tests" / "eval" / "zero_hallucination_scenarios.json",
+    )
+    summary = summarize_evaluations(rows, mode="deterministic")
+    assert summary.mean_precision_at_k is None
+    assert summary.mean_recall_at_k is None
+    assert summary.mean_mrr_at_k is None
+    assert summary.mean_ndcg_at_k is None
+    # IR rows must NOT appear in the assessment table when metrics are None.
+    table_metrics = {row["metric"] for row in build_assessment_table(summary)}
+    assert "mean_precision_at_k" not in table_metrics
+    assert "mean_recall_at_k" not in table_metrics
+
+
+def test_ir_metrics_computed_when_gold_labels_provided(rag_service, users):
+    # Supply a relevant_document_ids list directly via evaluate_single_scenario.
+    row = evaluate_single_scenario(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenario_id="manual_gold_test",
+        suite="test",
+        query="Can a taxpayer deduct home office expenses?",
+        user_id="u_helpdesk_01",
+        mode="deterministic",
+        expected_behavior="answer_with_exact_citations_per_claim",
+        must_not_retrieve=[],
+        relevant_document_ids=["DOC-LEG-001", "DOC-POL-001"],
+        k=5,
+    )
+    # Metrics must be floats in [0, 1] when gold labels exist.
+    assert row.scenario_precision_at_k is not None
+    assert row.scenario_recall_at_k is not None
+    assert row.scenario_mrr_at_k is not None
+    assert row.scenario_ndcg_at_k is not None
+    assert 0.0 <= row.scenario_precision_at_k <= 1.0
+    assert 0.0 <= row.scenario_recall_at_k <= 1.0
+    assert 0.0 <= row.scenario_mrr_at_k <= 1.0
+    assert 0.0 <= row.scenario_ndcg_at_k <= 1.0
+
+
+def test_ir_metrics_appear_in_table_when_gold_labels_present(rag_service, users):
+    row = evaluate_single_scenario(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenario_id="table_gold_test",
+        suite="test",
+        query="Can a taxpayer deduct home office expenses?",
+        user_id="u_helpdesk_01",
+        mode="deterministic",
+        expected_behavior="answer_with_exact_citations_per_claim",
+        must_not_retrieve=[],
+        relevant_document_ids=["DOC-LEG-001", "DOC-POL-001"],
+    )
+    summary = summarize_evaluations([row], mode="deterministic")
+    table_metrics = {r["metric"] for r in build_assessment_table(summary)}
+    assert "mean_precision_at_k" in table_metrics
+    assert "mean_recall_at_k" in table_metrics
+    assert "mean_mrr_at_k" in table_metrics
+    assert "mean_ndcg_at_k" in table_metrics
+
+
+def test_assessment_table_contains_new_latency_and_cache_rows(rag_service, users):
+    rows = evaluate_zero_hallucination_scenarios(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenarios_path=ROOT / "tests" / "eval" / "zero_hallucination_scenarios.json",
+    )
+    table = build_assessment_table(summarize_evaluations(rows, mode="deterministic"))
+    metrics = {row["metric"] for row in table}
+    assert {"latency_p50_seconds", "latency_p95_seconds", "latency_p99_seconds", "cache_hit_rate"}.issubset(metrics)
+
+
+def test_scenario_cache_hit_field_is_bool(rag_service, users):
+    rows = evaluate_zero_hallucination_scenarios(
+        service_factory=lambda: rag_service,
+        users=users,
+        scenarios_path=ROOT / "tests" / "eval" / "zero_hallucination_scenarios.json",
+    )
+    for row in rows:
+        assert isinstance(row.cache_hit, bool)
+
+
+def test_summarize_empty_rows_returns_zero_defaults():
+    summary = summarize_evaluations([], mode="deterministic")
+    assert summary.scenario_count == 0
+    assert summary.latency_p50_seconds == 0.0
+    assert summary.latency_p95_seconds == 0.0
+    assert summary.latency_p99_seconds == 0.0
+    assert summary.cache_hit_rate == 0.0
+    assert summary.mean_precision_at_k is None

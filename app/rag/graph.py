@@ -292,6 +292,7 @@ class GraphDeps:
     grader: Callable[[str, list[Chunk], UserContext | None], GraderResult] = None  # type: ignore[assignment]
     reranker: Callable[[str, list], list] | None = None
     answer_composer: Callable[[str, list[Chunk]], GeneratedAnswer] | None = None
+    tracer: Any = None  # PipelineTracer | _NullTracer | None — optional, no-op when absent
 
     def __post_init__(self) -> None:
         if self.grader is None:
@@ -308,6 +309,7 @@ def _retrieve(state: RagState, deps: GraphDeps) -> None:
         backend=deps.backend,
         embedder=deps.embedder,
         reranker=deps.reranker,
+        tracer=deps.tracer,
     )
     state.retrieved_chunks = final_context
     state.reranked_chunks = final_context
@@ -356,15 +358,28 @@ def run_fsm_graph(
     can assert exact state orderings, and abstention reasons are exposed on
     ``state.abstention_reason`` for audit.
     """
+    from .tracing import _NULL_TRACER, _query_hash  # local import avoids circular
+
+    _t = deps.tracer or _NULL_TRACER
 
     state = RagState(user=user, query=query, original_query=query)
     state.trace.append("START")
 
     # AUTH_CONTEXT
+    _s = _t.span(
+        "auth_context",
+        input_data={
+            "role": user.role,
+            "clearance_level": user.clearance,
+            "need_to_know_count": len(user.need_to_know_groups),
+        },
+    )
     state.trace.append("AUTH_CONTEXT")
+    _s.end(output={"rbac_filter_applied": True})
 
     # CLASSIFY_QUERY - also the place where we block prompt injection before
     # it can influence any downstream stage.
+    _s = _t.span("query_classification", input_data={"query_hash": _query_hash(query)})
     state.trace.append("CLASSIFY_QUERY")
     if detect_prompt_injection(query):
         state.injection_detected = True
@@ -372,6 +387,8 @@ def run_fsm_graph(
         state.trace.append("ABSTAIN")
         state.answer = GeneratedAnswer(text="", citations=[], abstained=True, abstention_reason="prompt_injection_detected")
         state.trace.append("END")
+        _s.end(output={"injection_detected": True, "decision": "abstain"})
+        _t.end(output={"final_decision": "abstain", "abstention_reason": "prompt_injection_detected"})
         return state
 
     # Optional DECOMPOSE_QUERY
@@ -379,6 +396,7 @@ def run_fsm_graph(
     if len(sub_queries) > 1:
         state.decomposed_queries = sub_queries
         state.trace.append("DECOMPOSE_QUERY")
+    _s.end(output={"injection_detected": False, "sub_query_count": len(state.decomposed_queries)})
 
     # Retrieval loop with bounded corrections.
     while state.attempts < MAX_RETRIEVAL_ATTEMPTS:
@@ -387,9 +405,23 @@ def run_fsm_graph(
         state.trace.append("RERANK")
 
         state.trace.append("GRADE_CONTEXT")
+        _s = _t.span(
+            "context_grade",
+            input_data={
+                "chunk_count": len(state.reranked_chunks),
+                "attempt": state.attempts,
+                "query_hash": _query_hash(state.query),
+            },
+        )
         state.grader = deps.grader(state.query, state.reranked_chunks, state.user)
-
         label = state.grader.label
+        _s.end(
+            output={
+                "label": label,
+                "confidence": state.grader.confidence,
+                "required_action": state.grader.required_action,
+            }
+        )
 
         if label == "Relevant" and state.reranked_chunks:
             break
@@ -398,23 +430,29 @@ def run_fsm_graph(
             # Bounded decomposition: we already expanded sub_queries; try HyDE
             # expansion as the second correction signal.
             if state.hyde_used < MAX_HYDE_ATTEMPTS:
+                _s = _t.span("hyde", input_data={"attempt": state.hyde_used + 1, "query_hash": _query_hash(state.query)})
                 state.query = hyde_expand(state.query)
                 state.hyde_used += 1
                 state.trace.append("HYDE_QUERY")
+                _s.end(output={"new_query_hash": _query_hash(state.query)})
                 continue
             state.abstention_reason = "ambiguous_evidence_after_correction"
             break
 
         if label == "Irrelevant" and state.attempts < MAX_RETRIEVAL_ATTEMPTS:
             if state.rewrites_used < MAX_QUERY_REWRITES:
+                _s = _t.span("query_rewrite", input_data={"attempt": state.rewrites_used + 1, "query_hash": _query_hash(state.query)})
                 state.query = rewrite_query(state.query)
                 state.rewrites_used += 1
                 state.trace.append("REWRITE_QUERY")
+                _s.end(output={"new_query_hash": _query_hash(state.query)})
                 continue
             if state.hyde_used < MAX_HYDE_ATTEMPTS:
+                _s = _t.span("hyde", input_data={"attempt": state.hyde_used + 1, "query_hash": _query_hash(state.query)})
                 state.query = hyde_expand(state.query)
                 state.hyde_used += 1
                 state.trace.append("HYDE_QUERY")
+                _s.end(output={"new_query_hash": _query_hash(state.query)})
                 continue
             state.abstention_reason = "irrelevant_after_corrections"
             break
@@ -426,6 +464,15 @@ def run_fsm_graph(
     # Terminal transition.
     grader_label = state.grader.label if state.grader else "Irrelevant"
     if grader_label != "Relevant" or not state.reranked_chunks:
+        _s = _t.span(
+            "abstention_decision",
+            input_data={
+                "reason": state.abstention_reason,
+                "attempts": state.attempts,
+                "rewrites_used": state.rewrites_used,
+                "hyde_used": state.hyde_used,
+            },
+        )
         state.trace.append("ABSTAIN")
         state.answer = GeneratedAnswer(
             text="",
@@ -434,14 +481,32 @@ def run_fsm_graph(
             abstention_reason=state.abstention_reason or "grader_not_relevant",
         )
         state.trace.append("END")
+        _s.end(output={"final_decision": "abstain"})
+        _t.end(output={"final_decision": "abstain", "abstention_reason": state.abstention_reason})
         return state
 
+    _s = _t.span(
+        "generation",
+        input_data={
+            "context_chunk_count": len(state.reranked_chunks),
+            "query_hash": _query_hash(state.query),
+        },
+    )
     state.trace.append("GENERATE_WITH_CITATIONS")
     _generate(state, deps)
+    _s.end(
+        output={
+            "abstained": state.answer.abstained if state.answer else True,
+            "citation_count": len(state.citations),
+        }
+    )
 
+    _s = _t.span("citation_validation", input_data={"citation_count": len(state.citations)})
     state.trace.append("VALIDATE_CITATIONS")
     final = _validate_citations(state)
     if final == "ABSTAIN":
+        _s.end(output={"passed": False, "reason": state.abstention_reason or "citation_validation_failed"})
+        _abs = _t.span("abstention_decision", input_data={"reason": state.abstention_reason or "citation_validation_failed"})
         state.trace.append("ABSTAIN")
         state.answer = GeneratedAnswer(
             text="",
@@ -449,6 +514,11 @@ def run_fsm_graph(
             abstained=True,
             abstention_reason=state.abstention_reason or "citation_validation_failed",
         )
+        _abs.end(output={"final_decision": "abstain"})
+        _t.end(output={"final_decision": "abstain"})
+    else:
+        _s.end(output={"passed": True, "citation_count": len(state.citations)})
+        _t.end(output={"final_decision": "answer", "citation_count": len(state.citations)})
     state.trace.append("END")
     return state
 

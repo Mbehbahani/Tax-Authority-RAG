@@ -19,8 +19,10 @@ from .generation import detect_prompt_injection
 from .graph import GraphDeps, RagState, run_graph
 from .ingestion import ingest_corpus
 from .models import Chunk, UserContext
+from .observability_langfuse import _sanitise_role
 from .retrieval import DEFAULT_INDEX_NAME, InMemoryOpenSearchBackend, OpenSearchBackend, RetrievalBackend
 from .security import audit, build_auth_filter
+from .tracing import get_pipeline_tracer
 
 
 DEFAULT_EMBEDDING_MODEL_VERSION = "local-deterministic-v1"
@@ -81,6 +83,12 @@ class RagService:
     def ask(self, user: UserContext, query: str) -> AskResult:
         start = time.perf_counter()
         auth = build_auth_filter(user)
+        tracer = get_pipeline_tracer(
+            request_id=f"{user.user_id}:{int(start * 1_000_000)}",
+            sanitised_role=_sanitise_role(user.user_id, user.role),
+            query=query,
+            extra_metadata={"mode": "rag_service.ask", "role": user.role},
+        )
 
         injection = detect_prompt_injection(query)
 
@@ -102,6 +110,8 @@ class RagService:
                     citation_ids=[c.chunk_id for c in cached.citations],
                 )
                 elapsed = time.perf_counter() - start
+                tracer.end(output={"final_decision": "answer", "cache_hit": True, "latency_seconds": elapsed})
+                tracer.flush()
                 return AskResult(
                     user_id=user.user_id,
                     query=query,
@@ -122,6 +132,7 @@ class RagService:
             embedder=self._embedder,
             reranker=self._reranker,
             answer_composer=self._answer_composer,
+            tracer=tracer,
         )
         state = run_graph(user=user, query=query, deps=deps)
 
@@ -160,6 +171,7 @@ class RagService:
         )
 
         elapsed = time.perf_counter() - start
+        tracer.flush()
         return AskResult(
             user_id=user.user_id,
             query=query,

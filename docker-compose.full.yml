@@ -10,6 +10,7 @@ services:
       - "8002:8000"
     env_file:
       - .env.example
+      - .env
     environment:
       # Retrieval
       - RETRIEVAL_BACKEND=opensearch

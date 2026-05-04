@@ -11,12 +11,12 @@
   <img src="https://img.shields.io/badge/search-hybrid%20BM25%20%2B%20vector-6F42C1" alt="Hybrid Search">
 </p>
 
-This repository presents a **working assessment implementation and architecture package** for a secure Enterprise RAG assistant serving a National Tax Authority use case. It focuses on **citation-grounded answers, RBAC-before-retrieval, hybrid retrieval quality, and production-oriented evaluation discipline** across legislation, case law, internal policy, and training content.
+This repository presents a **working assessment implementation and architecture package** for a secure Enterprise RAG assistant serving a National Tax Authority use case. It focuses on **citation-grounded answers, RBAC-before-retrieval, hybrid retrieval quality, and real-stack validation evidence** across legislation, case law, internal policy, and training content.
 
 It is designed to show both:
 
 - **engineering judgment** — clear architectural tradeoffs, bounded complexity, and security-first design
-- **execution ability** — implemented code, tests, evaluation assets, live Bedrock validation, and reproducible documentation
+- **execution ability** — implemented code, real-stack validation, and reproducible documentation
 
 ## Recommended reviewer reading order
 
@@ -34,7 +34,7 @@ The image below is an example of the working local test/demo interface used for 
 ## What an engineering reviewer should notice quickly
 
 - The system is **not a generic chatbot wrapper**; it is a constrained legal/fiscal RAG design with explicit safety guarantees.
-- The repository contains both **deterministic local validation** and a **real Bedrock-backed runtime path**.
+- The repository contains a **real Bedrock-backed runtime path** with concrete request-level evidence.
 - The documentation separates **what is already proven** from **what remains a production next step**, which is usually a sign of strong engineering maturity.
 - The final submission is organized so a reviewer can move from **executive summary -> architecture -> evidence -> detailed reports** without getting lost.
 
@@ -75,12 +75,19 @@ flowchart LR
 ## Validation highlights
 
 - **Assignment coverage:** `92–95%`
-- **Offline suite:** `97 passed, 9 skipped`
-- **Live Bedrock compatibility:** `3 passed`
-- **Live retrieval/rerank checks:** `2 passed`
-- **Targeted production gate:** `TTFT p95 < 1.5s`
+- **Real local stack active:** OpenSearch + Redis + LangGraph + Bedrock
+- **Live evidence collected:** successful cited answers, safe abstention, and cache-hit speedup
+- **Targeted production gate:** `TTFT p95 < 1.5s` remains the design target
 
-## Assessment positioning
+## Real-Stack Evidence and Observability
+
+The reviewer-relevant runtime evidence is centered on:
+
+- `app/rag/observability_langfuse.py` — scenario/result export to Langfuse
+- `app/rag/tracing.py` — runtime pipeline tracing hooks
+- `docs/reports/REAL_STACK_EVALUATION_ANALYSIS.md` — concrete analysis from live requests
+- `docs/reports/evaluation_summary.md` — latest compact summary artifact
+
 
 This repository should be read as an **implementation-ready assessment submission**, not only as a slide-deck architecture answer.
 
@@ -92,13 +99,12 @@ What is already demonstrated:
 - RBAC-before-retrieval enforcement
 - CRAG-style bounded orchestration
 - citation validation and abstention behavior
-- formal tests across unit, integration, security, evaluation, and performance smoke scenarios
 - real Bedrock/OpenSearch/Redis/LangGraph validation path
 
 What is intentionally not overstated:
 
 - this is **not yet a full production deployment over a 500,000-document / 20M+ chunk corpus**
-- some production-scale benchmarking, managed infrastructure rollout, and full judge-based evaluation remain next steps
+- some production-scale benchmarking, managed infrastructure rollout, and deeper stage-level latency attribution remain next steps
 
 That balance is important in senior engineering review: the project aims to be **credible, concrete, and honest**.
 
@@ -125,6 +131,7 @@ docker compose -f docker-compose.test.yml up --build
 - **Architecture plan:** [`docs/ARCHITECTURE_PLAN.md`](docs/ARCHITECTURE_PLAN.md)
 - **Assignment fit:** [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
 - **Implementation and validation overview:** [`docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](docs/reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md)
+- **Real-stack analysis:** [`docs/reports/REAL_STACK_EVALUATION_ANALYSIS.md`](docs/reports/REAL_STACK_EVALUATION_ANALYSIS.md)
 
 ## Live System Evidence
 
@@ -149,7 +156,7 @@ The system demonstrates:
 
 ```bash
 # Requires AWS credentials with Bedrock access in eu-central-1
-docker compose -f docker-compose.test.yml --profile bedrock up --build api-bedrock -d
+docker compose -f docker-compose.full.yml up --build -d
 ```
 
 Then open **`http://localhost:8002/`** to interact with the live system.

@@ -24,5 +24,6 @@ Do not compare local deterministic latency directly with full Bedrock latency.
 ## Supporting reports
 
 - [`reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md`](reports/IMPLEMENTATION_AND_VALIDATION_OVERVIEW.md) — merged implementation and validation summary.
+- [`REAL_STACK_EVALUATION_ANALYSIS.md`](REAL_STACK_EVALUATION_ANALYSIS.md) — concrete real-stack findings from live requests, including latency, cache, abstention, and CRAG path evidence.
 - [`PERFORMANCE_TEST_SCENARIOS.md`](PERFORMANCE_TEST_SCENARIOS.md) — performance target and benchmark plan.
 - [`TEST_STRATEGY.md`](TEST_STRATEGY.md) — test matrix and CI/CD gates.

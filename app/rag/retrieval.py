@@ -482,12 +482,27 @@ def hybrid_retrieve(
     rerank_max: int = DEFAULT_RERANK_MAX,
     final_top_n: int = DEFAULT_FINAL_TOP_N,
     reranker: Any | None = None,
+    tracer: Any | None = None,
 ) -> tuple[list[Chunk], dict[str, Any]]:
+    from .tracing import _NULL_TRACER, _query_hash  # local import avoids circular
+    _t = tracer or _NULL_TRACER
+
     query_embedding = embedder.embed_query(query) if hasattr(embedder, "embed_query") else embedder.embed(query)
+
+    _s = _t.span("retrieval_bm25", input_data={"query_hash": _query_hash(query), "top_k": lexical_top_k})
     lexical_hits = backend.lexical_search(query, user, top_k=lexical_top_k)
+    _s.end(output={"hit_count": len(lexical_hits), "top_score": round(lexical_hits[0][1], 4) if lexical_hits else 0.0})
+
+    _s = _t.span("retrieval_vector", input_data={"query_hash": _query_hash(query), "embedding_dim": len(query_embedding), "top_k": vector_top_k})
     vector_hits = backend.vector_search(query_embedding, user, top_k=vector_top_k)
+    _s.end(output={"hit_count": len(vector_hits), "top_score": round(vector_hits[0][1], 4) if vector_hits else 0.0})
+
+    _s = _t.span("rrf_fusion", input_data={"lexical_count": len(lexical_hits), "vector_count": len(vector_hits), "rrf_k": DEFAULT_RRF_K})
     fused = reciprocal_rank_fusion([lexical_hits, vector_hits])
     candidates = take_candidates(fused, limit=fused_candidates)
+    _s.end(output={"fused_count": len(fused), "candidates_count": len(candidates), "top_rrf_score": round(candidates[0].rrf_score, 6) if candidates else 0.0})
+
+    _s = _t.span("rerank", input_data={"candidate_count": len(candidates), "max_candidates": rerank_max})
     if reranker is None:
         reranked = rerank(query, candidates, max_candidates=rerank_max)
         reranker_name = "deterministic"
@@ -495,6 +510,7 @@ def hybrid_retrieve(
         reranked = reranker(query, candidates[:rerank_max]) if callable(reranker) else reranker.rerank(query, candidates[:rerank_max])
         reranker_name = getattr(reranker, "model_id", reranker.__class__.__name__)
     final = take_with_complete_citations(reranked, limit=final_top_n)
+    _s.end(output={"reranked_count": len(reranked), "final_count": len(final), "reranker": reranker_name})
 
     forbidden = [c for c in final if not is_authorized(c, user)]
     if forbidden:
