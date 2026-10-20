@@ -1,7 +1,7 @@
 # Tax Authority RAG
 
 <p align="center">
-  <strong>Enterprise RAG architecture for a secure internal AI assistant for the National Tax Authority.</strong>
+  <strong>FastAPI tax-domain RAG assessment with hybrid retrieval, RBAC filtering, bounded LangGraph workflows and optional Bedrock integration.</strong>
 </p>
 
 <p align="center">
@@ -11,17 +11,12 @@
   <img src="https://img.shields.io/badge/search-hybrid%20BM25%20%2B%20vector-6F42C1" alt="Hybrid Search">
 </p>
 
-This repository presents a **working assessment implementation and architecture package** for a secure Enterprise RAG assistant serving a National Tax Authority use case. It focuses on **citation-grounded answers, RBAC-before-retrieval, hybrid retrieval quality, and production-oriented evaluation discipline** across legislation, case law, internal policy, and training content.
-
-It is designed to show both:
-
-- **engineering judgment** — clear architectural tradeoffs, bounded complexity, and security-first design
-- **execution ability** — implemented code, tests, evaluation assets, live Bedrock validation, and reproducible documentation
+This assessment implementation explores an internal legal/fiscal assistant over a synthetic corpus. It combines hybrid retrieval, access filtering, bounded orchestration and citation validation. The default runtime is deterministic and offline; Bedrock-backed embeddings, reranking and generation are enabled explicitly for integration checks.
 
 ## Recommended reviewer reading order
 
 1. [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
-2. [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
+2. [`docs/reports/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/reports/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
 3. [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
 4. Stage reports in `docs/reports/`
 
@@ -31,14 +26,13 @@ The image below is an example of the working local test/demo interface used for 
 
 <img src="docs/assets/readme-testing-example.png" alt="Live testing example" width="700">
 
-## What an engineering reviewer should notice quickly
+## Implementation scope
 
-- The system is **not a generic chatbot wrapper**; it is a constrained legal/fiscal RAG design with explicit safety guarantees.
-- The repository contains both **deterministic local validation** and a **real Bedrock-backed runtime path**.
-- The documentation separates **what is already proven** from **what remains a production next step**, which is usually a sign of strong engineering maturity.
-- The final submission is organized so a reviewer can move from **executive summary -> architecture -> evidence -> detailed reports** without getting lost.
+- FastAPI application with deterministic local tests and an optional Bedrock-backed runtime.
+- Access filters applied before retrieval and citation checks against authorised context.
+- Separate reports for local tests, service integration and remaining production-scale work.
 
-## Why this design stands out
+## Design choices
 
 - **Citation-first generation** — every accepted claim must cite **document name, article, and paragraph**.
 - **RBAC before retrieval** — unauthorized FIOD/fraud documents are excluded **before** BM25, vector search, fusion, reranking, prompting, and cache access.
@@ -82,7 +76,7 @@ flowchart LR
 
 ## Assessment positioning
 
-This repository should be read as an **implementation-ready assessment submission**, not only as a slide-deck architecture answer.
+The implementation and reports cover the assessment use case. The production-scale corpus and managed infrastructure described in the architecture remain separate deployment work.
 
 What is already demonstrated:
 
@@ -95,12 +89,10 @@ What is already demonstrated:
 - formal tests across unit, integration, security, evaluation, and performance smoke scenarios
 - real Bedrock/OpenSearch/Redis/LangGraph validation path
 
-What is intentionally not overstated:
+Remaining scope:
 
 - this is **not yet a full production deployment over a 500,000-document / 20M+ chunk corpus**
 - some production-scale benchmarking, managed infrastructure rollout, and full judge-based evaluation remain next steps
-
-That balance is important in senior engineering review: the project aims to be **credible, concrete, and honest**.
 
 ## Quick start
 
@@ -121,15 +113,15 @@ docker compose -f docker-compose.test.yml up --build
 ## Best entry points
 
 - **Final consolidated report:** [`docs/reports/FINAL_ASSIGNMENT_REPORT.md`](docs/reports/FINAL_ASSIGNMENT_REPORT.md)
-- **Final answer:** [`docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
+- **Final answer:** [`docs/reports/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md`](docs/reports/FINAL_TECHNICAL_ASSESSMENT_ANSWER.md)
 - **Architecture plan:** [`docs/ARCHITECTURE_PLAN.md`](docs/ARCHITECTURE_PLAN.md)
 - **Assignment fit:** [`docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md`](docs/reports/ASSIGNMENT_ALIGNMENT_REPORT.md)
 - **Evaluation & metrics:** [`docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md`](docs/reports/STAGE_4_DEEPEVAL_AND_RETRIEVAL_QUALITY_REPORT.md)
 - **Local PoC report:** [`docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md`](docs/reports/STAGE_1_IMPLEMENTATION_REPORT.md)
 
-## Live System Evidence
+## Bedrock integration evidence
 
-The project includes a validated real Bedrock stack running locally via Docker with:
+The documented integration path runs locally via Docker with:
 
 - **OpenSearch** (real hybrid BM25 + vector retrieval)
 - **Redis** (real semantic cache)
